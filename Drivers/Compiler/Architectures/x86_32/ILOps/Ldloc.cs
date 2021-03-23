@@ -1,4 +1,5 @@
 ﻿#region LICENSE
+
 // ---------------------------------- LICENSE ---------------------------------- //
 //
 //    Fling OS - The educational operating system
@@ -22,32 +23,32 @@
 //		For paper mail address, please contact via email for details.
 //
 // ------------------------------------------------------------------------------ //
+
 #endregion
-    
+
 using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Drivers.Compiler.Architectures.x86.ASMOps;
 using Drivers.Compiler.IL;
+using Drivers.Compiler.Types;
 
 namespace Drivers.Compiler.Architectures.x86
 {
     /// <summary>
-    /// See base class documentation.
+    ///     See base class documentation.
     /// </summary>
     public class Ldloc : IL.ILOps.Ldloc
     {
         public override void PerformStackOperations(ILPreprocessState conversionState, ILOp theOp)
         {
-            bool loadAddr = (ILOp.OpCodes)theOp.opCode.Value == OpCodes.Ldloca ||
-                            (ILOp.OpCodes)theOp.opCode.Value == OpCodes.Ldloca_S;
-            UInt16 localIndex = 0;
-            switch ((ILOp.OpCodes)theOp.opCode.Value)
+            bool loadAddr = (OpCodes)theOp.opCode.Value == OpCodes.Ldloca ||
+                            (OpCodes)theOp.opCode.Value == OpCodes.Ldloca_S;
+            ushort localIndex = 0;
+            switch ((OpCodes)theOp.opCode.Value)
             {
                 case OpCodes.Ldloc:
                 case OpCodes.Ldloca:
-                    localIndex = (UInt16)Utilities.ReadInt16(theOp.ValueBytes, 0);
+                    localIndex = (ushort)Utilities.ReadInt16(theOp.ValueBytes, 0);
                     break;
                 case OpCodes.Ldloc_0:
                     localIndex = 0;
@@ -63,15 +64,15 @@ namespace Drivers.Compiler.Architectures.x86
                     break;
                 case OpCodes.Ldloc_S:
                 case OpCodes.Ldloca_S:
-                    localIndex = (UInt16)theOp.ValueBytes[0];
+                    localIndex = theOp.ValueBytes[0];
                     break;
             }
 
-            Types.VariableInfo theLoc = conversionState.Input.TheMethodInfo.LocalInfos.ElementAt(localIndex);
-            
+            VariableInfo theLoc = conversionState.Input.TheMethodInfo.LocalInfos.ElementAt(localIndex);
+
             if (loadAddr)
             {
-                conversionState.CurrentStackFrame.Stack.Push(new StackItem()
+                conversionState.CurrentStackFrame.GetStack(theOp).Push(new StackItem
                 {
                     isFloat = false,
                     sizeOnStackInBytes = 4,
@@ -83,7 +84,7 @@ namespace Drivers.Compiler.Architectures.x86
             {
                 int pushedLocalSizeVal = theLoc.TheTypeInfo.SizeOnStackInBytes;
 
-                conversionState.CurrentStackFrame.Stack.Push(new StackItem()
+                conversionState.CurrentStackFrame.GetStack(theOp).Push(new StackItem
                 {
                     isFloat = Utilities.IsFloat(theLoc.UnderlyingType),
                     sizeOnStackInBytes = pushedLocalSizeVal,
@@ -94,28 +95,28 @@ namespace Drivers.Compiler.Architectures.x86
         }
 
         /// <summary>
-        /// See base class documentation.
+        ///     See base class documentation.
         /// </summary>
         /// <param name="theOp">See base class documentation.</param>
         /// <param name="conversionState">See base class documentation.</param>
         /// <returns>See base class documentation.</returns>
         /// <exception cref="System.NotSupportedException">
-        /// Thrown when loading a float local is required as it currently hasn't been
-        /// implemented.
-        /// Also thrown if arguments are not of size 4 or 8 bytes.
+        ///     Thrown when loading a float local is required as it currently hasn't been
+        ///     implemented.
+        ///     Also thrown if arguments are not of size 4 or 8 bytes.
         /// </exception>
         public override void Convert(ILConversionState conversionState, ILOp theOp)
         {
             //Load local
 
-            bool loadAddr = (ILOp.OpCodes)theOp.opCode.Value == OpCodes.Ldloca ||
-                            (ILOp.OpCodes)theOp.opCode.Value == OpCodes.Ldloca_S;
-            UInt16 localIndex = 0;
-            switch ((ILOp.OpCodes)theOp.opCode.Value)
+            bool loadAddr = (OpCodes)theOp.opCode.Value == OpCodes.Ldloca ||
+                            (OpCodes)theOp.opCode.Value == OpCodes.Ldloca_S;
+            ushort localIndex = 0;
+            switch ((OpCodes)theOp.opCode.Value)
             {
                 case OpCodes.Ldloc:
                 case OpCodes.Ldloca:
-                    localIndex = (UInt16)Utilities.ReadInt16(theOp.ValueBytes, 0);
+                    localIndex = (ushort)Utilities.ReadInt16(theOp.ValueBytes, 0);
                     break;
                 case OpCodes.Ldloc_0:
                     localIndex = 0;
@@ -131,11 +132,11 @@ namespace Drivers.Compiler.Architectures.x86
                     break;
                 case OpCodes.Ldloc_S:
                 case OpCodes.Ldloca_S:
-                    localIndex = (UInt16)theOp.ValueBytes[0];
+                    localIndex = theOp.ValueBytes[0];
                     break;
             }
-            
-            Types.VariableInfo theLoc = conversionState.Input.TheMethodInfo.LocalInfos[localIndex];
+
+            VariableInfo theLoc = conversionState.Input.TheMethodInfo.LocalInfos[localIndex];
             if (Utilities.IsFloat(theLoc.UnderlyingType))
             {
                 //SUPPORT - floats
@@ -144,11 +145,11 @@ namespace Drivers.Compiler.Architectures.x86
 
             if (loadAddr)
             {
-                conversionState.Append(new ASMOps.Mov() { Size = ASMOps.OperandSize.Dword, Src = "EBP", Dest = "EAX" });
-                conversionState.Append(new ASMOps.Sub() { Src = (-theLoc.Offset).ToString(), Dest = "EAX" });
-                conversionState.Append(new ASMOps.Push() { Size = ASMOps.OperandSize.Dword, Src = "EAX" });
+                conversionState.Append(new Mov {Size = OperandSize.Dword, Src = "EBP", Dest = "EAX"});
+                conversionState.Append(new ASMOps.Sub {Src = (-theLoc.Offset).ToString(), Dest = "EAX"});
+                conversionState.Append(new Push {Size = OperandSize.Dword, Src = "EAX"});
 
-                conversionState.CurrentStackFrame.Stack.Push(new StackItem()
+                conversionState.CurrentStackFrame.GetStack(theOp).Push(new StackItem
                 {
                     isFloat = false,
                     sizeOnStackInBytes = 4,
@@ -160,21 +161,22 @@ namespace Drivers.Compiler.Architectures.x86
             {
                 int localSizeOnStack = theLoc.TheTypeInfo.SizeOnStackInBytes;
 
-                if ((localSizeOnStack % 4) != 0)
+                if (localSizeOnStack%4 != 0)
                 {
                     throw new NotSupportedException("Invalid local bytes size!");
                 }
-                else
+                for (int i = theLoc.Offset + (localSizeOnStack - 4); i >= theLoc.Offset; i -= 4)
                 {
-                    for (int i = theLoc.Offset + (localSizeOnStack - 4); i >= theLoc.Offset; i -= 4)
+                    conversionState.Append(new Push
                     {
-                        conversionState.Append(new ASMOps.Push() { Size = ASMOps.OperandSize.Dword, Src = "[EBP-" + Math.Abs(i).ToString() + "]" });
-                    }
+                        Size = OperandSize.Dword,
+                        Src = "[EBP-" + Math.Abs(i) + "]"
+                    });
                 }
 
-                conversionState.CurrentStackFrame.Stack.Push(new StackItem()
+                conversionState.CurrentStackFrame.GetStack(theOp).Push(new StackItem
                 {
-                    isFloat =  Utilities.IsFloat(theLoc.UnderlyingType),
+                    isFloat = Utilities.IsFloat(theLoc.UnderlyingType),
                     sizeOnStackInBytes = localSizeOnStack,
                     isGCManaged = theLoc.TheTypeInfo.IsGCManaged,
                     isValue = theLoc.TheTypeInfo.IsValueType

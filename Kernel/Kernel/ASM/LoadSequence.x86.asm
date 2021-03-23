@@ -34,7 +34,6 @@ GLOBAL MultibootGraphicsRuntime_VbeMode:data
 GLOBAL MultiBootInfo_Memory_High:data
 GLOBAL MultiBootInfo_Memory_Low:data
 
-GLOBAL Kernel_MemStart:data
 GLOBAL Before_Kernel_Stack:data
 GLOBAL Kernel_Stack
 GLOBAL MultiBootInfo_Structure:data
@@ -45,8 +44,6 @@ GLOBAL IDT_Contents:data
 GLOBAL IDT_Pointer:data
 GLOBAL TSS_Contents:data
 GLOBAL TSS_POINTER:data
-
-Kernel_MemStart:
 
 ; BEGIN - Multiboot Signature
 MultibootSignature dd 464367618
@@ -59,7 +56,11 @@ MultiBootInfo_Memory_Low dd 0
 Before_Kernel_Stack: TIMES 65535 db 0
 Kernel_Stack:
 
+EXTERN Kernel_MemStart
 EXTERN Kernel_MemEnd
+
+EXTERN __bss_start
+EXTERN __bss_end
 
 KERNEL_VIRTUAL_BASE equ 0xC0000000					; 3GiB
 KERNEL_PAGE_NUMBER equ (KERNEL_VIRTUAL_BASE >> 22)
@@ -177,6 +178,29 @@ Kernel_Start:
 	; loop .Kernel_Start_Loop2
 
 	; END - Multiboot Info
+
+
+	; START - Zero out bss
+
+	lea ecx, [__bss_end - KERNEL_VIRTUAL_BASE]
+	lea eax, [__bss_start - KERNEL_VIRTUAL_BASE]
+	sub ecx, eax
+	.ZeroOutBSS:
+	mov byte [eax], 0
+	add eax, 1
+	loop .ZeroOutBSS
+	
+	
+	mov dword eax, 0x5F
+	mov dword ebx, 0xB8000
+	mov dword ecx, 2000
+	.ColourChange1:
+	mov byte [ebx+1], al
+	add ebx, 2
+	loop .ColourChange1
+
+	; END - Zero out bss
+
 ; END - Kernel Start
 
 EXTERN Page_Table1
@@ -205,16 +229,8 @@ EXTERN Page_Directory
 ;		...
 ;		0x0-End of kernel	->	0x0-End of kernel
 
-; Calculate number of pages for the kernel
-mov eax, Kernel_MemEnd
-sub eax, 0 ; Kernel_MemStart
-mov edx, 0
-mov ebx, 4096
-div ebx
-mov ecx, eax
-add ecx, 1
-
-; Identity map low pages to low pages
+; Identity map low 1MiB pages to low 1MiB pages
+mov ecx, 256
 lea eax, [Page_Table1 - KERNEL_VIRTUAL_BASE]
 mov ebx, 7
 .VirtMem_Loop1:
@@ -222,6 +238,32 @@ mov [eax], ebx
 add eax, 4
 add ebx, 4096
 loop .VirtMem_Loop1
+
+; Calculate number of pages for the kernel
+mov eax, Kernel_MemEnd
+sub eax, Kernel_MemStart
+mov edx, 0
+mov ebx, 4096
+div ebx
+mov ecx, eax
+add ecx, 1
+
+; Identity map low pages to low pages
+
+; Moves pointer to page table for kernel mem start mark
+lea eax, [Kernel_MemStart - KERNEL_VIRTUAL_BASE] ; ((x / (4096*1024)) * (1024*4)) 
+mov edx, 0
+mov ebx, 1024
+div ebx
+add eax, (Page_Table1 - KERNEL_VIRTUAL_BASE)
+
+mov ebx, 7
+add ebx, (Kernel_MemStart - KERNEL_VIRTUAL_BASE)
+.VirtMem_Loop2:
+mov [eax], ebx
+add eax, 4
+add ebx, 4096
+loop .VirtMem_Loop2
 
 
 ; 2. Map virtual memory for virtual address execution
@@ -232,9 +274,20 @@ loop .VirtMem_Loop1
 ;		...
 ;		0xC-End of kernel	->	0x0-End of kernel
 
+; Map high 1MiB pages to low 1MiB pages
+mov ecx, 256
+lea eax, [Page_Table1 - KERNEL_VIRTUAL_BASE]
+add eax, 0x300000 ; Moves pointer to page table for 3GiB mark ((0xC0000000 / (4096 * 1024)) * (1024*4))
+mov ebx, 7
+.VirtMem_Loop3:
+mov [eax], ebx
+add eax, 4
+add ebx, 4096
+loop .VirtMem_Loop3
+
 ; Calculate number of pages for the kernel
 mov eax, Kernel_MemEnd
-sub eax, 0 ; Kernel_MemStart
+sub eax, Kernel_MemStart
 mov edx, 0
 mov ebx, 4096
 div ebx
@@ -242,14 +295,21 @@ mov ecx, eax
 add ecx, 1
 
 ; Map high pages to low pages
-lea eax, [Page_Table1 - KERNEL_VIRTUAL_BASE]
-add eax, 0x300000 ; Moves pointer to page table for 3GiB mark ((0xC0000000 / (4096 * 1024)) * (1024*4))
+
+; Moves pointer to page table for kernel mem start mark
+lea eax, [Kernel_MemStart] ; ((x / (4096*1024)) * (1024*4)) 
+mov edx, 0
+mov ebx, 1024
+div ebx
+add eax, (Page_Table1 - KERNEL_VIRTUAL_BASE)
+
 mov ebx, 7
-.VirtMem_Loop2:
+add ebx, (Kernel_MemStart - KERNEL_VIRTUAL_BASE)
+.VirtMem_Loop4:
 mov [eax], ebx
 add eax, 4
 add ebx, 4096
-loop .VirtMem_Loop2
+loop .VirtMem_Loop4
 
 ; 3. Set page directory
 ;	- Load page directory entries
@@ -257,11 +317,11 @@ lea ebx, [Page_Table1 - KERNEL_VIRTUAL_BASE]
 lea edx, [Page_Directory - KERNEL_VIRTUAL_BASE]
 or ebx, 7
 mov ecx, 1024
-.VirtMem_Loop3:
+.VirtMem_Loop5:
 mov [edx], ebx
 add edx, 4
 add ebx, 4096
-loop .VirtMem_Loop3
+loop .VirtMem_Loop5
 
 
 ; Load the physical address of the page directory 
@@ -476,17 +536,14 @@ Boot_FlushCsGDT:
 
 EXTERN method_System_Void_RETEND_Kernel_Debug_Debugger_DECLEND_Int1_NAMEEND___
 EXTERN method_System_Void_RETEND_Kernel_Debug_Debugger_DECLEND_Int3_NAMEEND___
-EXTERN method_System_Void_RETEND_Kernel_Hardware_Interrupts_Interrupts_DECLEND_CommonISR_NAMEEND__System_UInt32_
+EXTERN method_System_Void_RETEND_Kernel_Interrupts_Interrupts_DECLEND_CommonISR_NAMEEND__System_UInt32_
 EXTERN method_System_Void_RETEND_Kernel_ExceptionMethods_DECLEND_Throw_PageFaultException_NAMEEND__System_UInt32_System_UInt32_System_UInt32_
 EXTERN method_System_Void_RETEND_Kernel_ExceptionMethods_DECLEND_Throw_StackException_NAMEEND___
 EXTERN method_System_Void_RETEND_Kernel_ExceptionMethods_DECLEND_Throw_DoubleFaultException_NAMEEND__System_UInt32_System_UInt32_
 EXTERN method_System_Void_RETEND_Kernel_ExceptionMethods_DECLEND_Throw_OverflowException_NAMEEND___
-EXTERN method_System_Void_RETEND_Kernel_ExceptionMethods_DECLEND_Throw_OverflowException_NAMEEND___
+EXTERN method_System_Void_RETEND_Kernel_ExceptionMethods_DECLEND_Throw_InvalidOpCodeException_NAMEEND___
 EXTERN method_System_Void_RETEND_Kernel_ExceptionMethods_DECLEND_Throw_DivideByZeroException_NAMEEND__System_UInt32_
-EXTERN staticfield_Kernel_Hardware_Processes_ThreadState__Kernel_Hardware_Processes_ProcessManager_CurrentThread_State
-EXTERN staticfield_Kernel_ExceptionState__Kernel_ExceptionMethods_State
-EXTERN staticfield_Kernel_ExceptionState__Kernel_Hardware_Interrupts_Interrupts_InterruptsExState
-EXTERN staticfield_Kernel_ExceptionState__Kernel_ExceptionMethods_DefaultState
+EXTERN staticfield_Kernel_Multiprocessing_ThreadState__Kernel_Multiprocessing_ProcessManager_CurrentThread_State
 
 %define KERNEL_MODE_DPL 0
 %define USER_MODE_DPL 3
@@ -524,7 +581,7 @@ mov es, ax
 mov ds, ax
 
 ; Load pointer to current thread state
-mov dword eax, [staticfield_Kernel_Hardware_Processes_ThreadState__Kernel_Hardware_Processes_ProcessManager_CurrentThread_State]
+mov dword eax, [staticfield_Kernel_Multiprocessing_ThreadState__Kernel_Multiprocessing_ProcessManager_CurrentThread_State]
 ; Test for null
 cmp eax, 0
 ; If null, skip
@@ -618,17 +675,13 @@ add esp, 64
 
 INTERRUPTS_STORE_STATE_SKIP_%1:
 
-; Put in interrupts ex state
-mov dword ebx, [staticfield_Kernel_ExceptionState__Kernel_Hardware_Interrupts_Interrupts_InterruptsExState]
-mov dword [staticfield_Kernel_ExceptionState__Kernel_ExceptionMethods_State], ebx
-
 %endmacro
 
 
 
 %macro INTERRUPTS_RESTORE_STATE 1
 ; Load pointer to current thread state
-mov dword eax, [staticfield_Kernel_Hardware_Processes_ThreadState__Kernel_Hardware_Processes_ProcessManager_CurrentThread_State]
+mov dword eax, [staticfield_Kernel_Multiprocessing_ThreadState__Kernel_Multiprocessing_ProcessManager_CurrentThread_State]
 ; Test for null
 cmp eax, 0
 ; If null, skip
@@ -643,17 +696,9 @@ mov dword ebx, [eax+7]
 ; Update TSS with kernel stack pointer for next task switch
 mov dword [TSS_Contents+4], ebx
 
-; Put in thread ex state
-mov dword ebx, [eax+21]
-mov dword [staticfield_Kernel_ExceptionState__Kernel_ExceptionMethods_State], ebx
-
 jmp INTERRUPTS_RESTORE_STATE_SKIP_END_%1
 
 INTERRUPTS_RESTORE_STATE_SKIP_%1:
-
-; Put in default ex state
-mov dword ebx, [staticfield_Kernel_ExceptionState__Kernel_ExceptionMethods_DefaultState]
-mov dword [staticfield_Kernel_ExceptionState__Kernel_ExceptionMethods_State], ebx
 
 INTERRUPTS_RESTORE_STATE_SKIP_END_%1:
 
@@ -912,7 +957,7 @@ Interrupt4Handler:
 call method_System_Void_RETEND_Kernel_ExceptionMethods_DECLEND_Throw_OverflowException_NAMEEND___
  
 Interrupt6Handler:
-call method_System_Void_RETEND_Kernel_ExceptionMethods_DECLEND_Throw_OverflowException_NAMEEND___
+call method_System_Void_RETEND_Kernel_ExceptionMethods_DECLEND_Throw_InvalidOpCodeException_NAMEEND___
 
 Interrupt8Handler:
 call method_System_Void_RETEND_Kernel_ExceptionMethods_DECLEND_Throw_DoubleFaultException_NAMEEND__System_UInt32_System_UInt32_
@@ -1006,7 +1051,7 @@ mov fs, ax
 
 push dword eax
 push dword 0x02
-call method_System_Void_RETEND_Kernel_PreReqs_DECLEND_WriteDebugVideo_NAMEEND__System_String_System_UInt32_
+call method_System_Void_RETEND_Kernel_Boot_DECLEND_WriteDebugVideo_NAMEEND__System_String_System_UInt32_
 add esp, 8
 
 mov ecx, 0x0F0FFFFF
@@ -1038,7 +1083,7 @@ CommonInterruptHandler%1:
 	%assign STORE_STATE_SKIP_NUM STORE_STATE_SKIP_NUM+1
 
 	push dword %1
-    call method_System_Void_RETEND_Kernel_Hardware_Interrupts_Interrupts_DECLEND_CommonISR_NAMEEND__System_UInt32_
+    call method_System_Void_RETEND_Kernel_Interrupts_Interrupts_DECLEND_CommonISR_NAMEEND__System_UInt32_
     add esp, 4
 
 	INTERRUPTS_RESTORE_STATE RESTORE_STATE_SKIP_NUM
@@ -1057,7 +1102,7 @@ CommonInterruptHandler%1:
 ; START - Debug interrupt handlers
 
 EXTERN staticfield_System_Boolean_Kernel_Debug_Debugger_Enabled
-EXTERN staticfield_System_Boolean_Kernel_Hardware_Interrupts_Interrupts_insideCriticalHandler
+EXTERN staticfield_System_Boolean_Kernel_Interrupts_Interrupts_insideCriticalHandler
 
 Debug_Int1Handler:
 	
@@ -1067,7 +1112,7 @@ Debug_Int1Handler:
 	mov dword eax, [staticfield_System_Boolean_Kernel_Debug_Debugger_Enabled]
 	cmp eax, 0
 	je Debug_Int1Handler_Skip
-	mov dword eax, [staticfield_System_Boolean_Kernel_Hardware_Interrupts_Interrupts_insideCriticalHandler]
+	mov dword eax, [staticfield_System_Boolean_Kernel_Interrupts_Interrupts_insideCriticalHandler]
 	cmp eax, 1
 	je Debug_Int1Handler_Skip
 	pop eax
@@ -1093,7 +1138,7 @@ Debug_Int3Handler:
 	mov dword eax, [staticfield_System_Boolean_Kernel_Debug_Debugger_Enabled]
 	cmp eax, 0
 	je Debug_Int3Handler_Skip
-	mov dword eax, [staticfield_System_Boolean_Kernel_Hardware_Interrupts_Interrupts_insideCriticalHandler]
+	mov dword eax, [staticfield_System_Boolean_Kernel_Interrupts_Interrupts_insideCriticalHandler]
 	cmp eax, 1
 	je Debug_Int3Handler_Skip
 	pop eax
@@ -1315,25 +1360,25 @@ __MAIN_ENTRYPOINT__:
 	call %KERNEL_MAIN_METHOD% ; Call our main method - this is a macro used by the kernel compiler.
 	
 	; We shouldn't ever get to this point! But just in case we do...
-	jmp method_System_Void_Kernel_PreReqs_Reset__ ; For now this is our intended behaviour
+	jmp method_System_Void_Kernel_Boot_Reset__ ; For now this is our intended behaviour
 
 ; END - Main Entrypoint
 
-GLOBAL method_System_Void_Kernel_PreReqs_Reset__:function
-GLOBAL method_System_Void_RETEND_Kernel_PreReqs_DECLEND_Reset_NAMEEND___:function
+GLOBAL method_System_Void_Kernel_Boot_Reset__:function
+GLOBAL method_System_Void_RETEND_Kernel_Boot_DECLEND_Reset_NAMEEND___:function
 
 ; BEGIN - Reset
-method_System_Void_Kernel_PreReqs_Reset__:
-method_System_Void_RETEND_Kernel_PreReqs_DECLEND_Reset_NAMEEND___:
+method_System_Void_Kernel_Boot_Reset__:
+method_System_Void_RETEND_Kernel_Boot_DECLEND_Reset_NAMEEND___:
 	cli ; Clear all interrupts so we aren't re-awoken
 	hlt	; Halt the OS / CPU / etc.
-	jmp method_System_Void_Kernel_PreReqs_Reset__ ; Just in case...
+	jmp method_System_Void_Kernel_Boot_Reset__ ; Just in case...
 ; END - Reset
 
-GLOBAL method_System_Void_RETEND_Kernel_PreReqs_DECLEND_WriteDebugVideo_NAMEEND__System_String_System_UInt32_:function
+GLOBAL method_System_Void_RETEND_Kernel_Boot_DECLEND_WriteDebugVideo_NAMEEND__System_String_System_UInt32_:function
 
 ; BEGIN - Write Debug Video
-method_System_Void_RETEND_Kernel_PreReqs_DECLEND_WriteDebugVideo_NAMEEND__System_String_System_UInt32_:
+method_System_Void_RETEND_Kernel_Boot_DECLEND_WriteDebugVideo_NAMEEND__System_String_System_UInt32_:
 
 ; MethodStart
 push dword ebp

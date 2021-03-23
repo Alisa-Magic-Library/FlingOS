@@ -1,4 +1,5 @@
 ﻿#region LICENSE
+
 // ---------------------------------- LICENSE ---------------------------------- //
 //
 //    Fling OS - The educational operating system
@@ -22,16 +23,11 @@
 //		For paper mail address, please contact via email for details.
 //
 // ------------------------------------------------------------------------------ //
+
 #endregion
-    
+
 using System;
-using System.Collections.Generic;
 using System.ComponentModel;
-using System.Drawing;
-using System.Data;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace Drivers.Debugger.App
@@ -46,18 +42,21 @@ namespace Drivers.Debugger.App
             get { return EAXRegisterControl.Value; }
             set { EAXRegisterControl.Value = value; }
         }
+
         [Description("Value of the register."), Category("Data")]
         public uint EBX
         {
             get { return EBXRegisterControl.Value; }
             set { EBXRegisterControl.Value = value; }
         }
+
         [Description("Value of the register."), Category("Data")]
         public uint ECX
         {
             get { return ECXRegisterControl.Value; }
             set { ECXRegisterControl.Value = value; }
         }
+
         [Description("Value of the register."), Category("Data")]
         public uint EDX
         {
@@ -71,12 +70,14 @@ namespace Drivers.Debugger.App
             get { return ESPRegisterControl.Value; }
             set { ESPRegisterControl.Value = value; }
         }
+
         [Description("Value of the register."), Category("Data")]
         public uint EBP
         {
             get { return EBPRegisterControl.Value; }
             set { EBPRegisterControl.Value = value; }
         }
+
         [Description("Value of the register."), Category("Data")]
         public uint EIP
         {
@@ -84,19 +85,19 @@ namespace Drivers.Debugger.App
             set { EIPRegisterControl.Value = value; }
         }
 
-        [Description("Value changed event."), Category("Event")]
-        public event RegisterChangedHandler RegisterChangedEvent;
-
         public x86RegistersControl()
         {
             InitializeComponent();
         }
 
+        [Description("Value changed event."), Category("Event")]
+        public event RegisterChangedHandler RegisterChangedEvent;
+
         private void EAXRegisterControl_Load(object sender, EventArgs e)
         {
             if (RegisterChangedEvent != null)
             {
-                RegisterChangedEvent.Invoke(new RegisterChangedEventArgs()
+                RegisterChangedEvent.Invoke(new RegisterChangedEventArgs
                 {
                     Register = "EAX",
                     Value = EAXRegisterControl.Value
@@ -108,7 +109,7 @@ namespace Drivers.Debugger.App
         {
             if (RegisterChangedEvent != null)
             {
-                RegisterChangedEvent.Invoke(new RegisterChangedEventArgs()
+                RegisterChangedEvent.Invoke(new RegisterChangedEventArgs
                 {
                     Register = "EBX",
                     Value = EBXRegisterControl.Value
@@ -120,7 +121,7 @@ namespace Drivers.Debugger.App
         {
             if (RegisterChangedEvent != null)
             {
-                RegisterChangedEvent.Invoke(new RegisterChangedEventArgs()
+                RegisterChangedEvent.Invoke(new RegisterChangedEventArgs
                 {
                     Register = "ECX",
                     Value = ECXRegisterControl.Value
@@ -132,7 +133,7 @@ namespace Drivers.Debugger.App
         {
             if (RegisterChangedEvent != null)
             {
-                RegisterChangedEvent.Invoke(new RegisterChangedEventArgs()
+                RegisterChangedEvent.Invoke(new RegisterChangedEventArgs
                 {
                     Register = "EDX",
                     Value = EDXRegisterControl.Value
@@ -144,7 +145,7 @@ namespace Drivers.Debugger.App
         {
             if (RegisterChangedEvent != null)
             {
-                RegisterChangedEvent.Invoke(new RegisterChangedEventArgs()
+                RegisterChangedEvent.Invoke(new RegisterChangedEventArgs
                 {
                     Register = "ESP",
                     Value = ESPRegisterControl.Value
@@ -156,7 +157,7 @@ namespace Drivers.Debugger.App
         {
             if (RegisterChangedEvent != null)
             {
-                RegisterChangedEvent.Invoke(new RegisterChangedEventArgs()
+                RegisterChangedEvent.Invoke(new RegisterChangedEventArgs
                 {
                     Register = "EBP",
                     Value = EBPRegisterControl.Value
@@ -168,7 +169,7 @@ namespace Drivers.Debugger.App
         {
             if (RegisterChangedEvent != null)
             {
-                RegisterChangedEvent.Invoke(new RegisterChangedEventArgs()
+                RegisterChangedEvent.Invoke(new RegisterChangedEventArgs
                 {
                     Register = "EIP",
                     Value = EIPRegisterControl.Value
@@ -179,15 +180,8 @@ namespace Drivers.Debugger.App
 
     public class RegisterChangedEventArgs : EventArgs
     {
-        public string Register
-        {
-            get;
-            set;
-        }
-        public uint Value
-        {
-            get;
-            set;
-        }
+        public string Register { get; set; }
+
+        public uint Value { get; set; }
     }
 }

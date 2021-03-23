@@ -1,4 +1,5 @@
 ﻿#region LICENSE
+
 // ---------------------------------- LICENSE ---------------------------------- //
 //
 //    Fling OS - The educational operating system
@@ -22,12 +23,13 @@
 //		For paper mail address, please contact via email for details.
 //
 // ------------------------------------------------------------------------------ //
+
 #endregion
-    
+
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace Drivers.Debugger
@@ -36,17 +38,23 @@ namespace Drivers.Debugger
 
     public sealed class Debugger : IDisposable
     {
-        private Serial MsgSerial;
-        private Serial NotifSerial;
+        private delegate void StringArrayDelegate(string[] Lines);
+
+        private readonly List<uint> BreakpointAddresses = new List<uint>();
         private DebugDataReader DebugData;
+        private Serial MsgSerial;
+
+        private bool NotificationReceived;
+        private Serial NotifSerial;
 
         private bool terminating;
+        private bool WaitingForNotification;
+
+        private System.Windows.Forms.TextBox LogBox;
+
         public bool Terminating
         {
-            get
-            {
-                return terminating;
-            }
+            get { return terminating; }
             set
             {
                 terminating = true;
@@ -57,26 +65,18 @@ namespace Drivers.Debugger
             }
         }
 
-        public bool Ready
+        public bool Ready { get; private set; }
+
+        public Debugger(System.Windows.Forms.TextBox ALogBox)
         {
-            get;
-            private set;
-        }
-
-        private bool NotificationReceived = false;
-        private bool WaitingForNotification = false;
-        public event NotificationHandler NotificationEvent;
-
-        private List<uint> BreakpointAddresses = new List<uint>();
-
-        public Debugger()
-        {
+            LogBox = ALogBox;
             MsgSerial = new Serial();
         }
+
         public void Dispose()
         {
             Terminating = true;
-            
+
             MsgSerial.Dispose();
             MsgSerial = null;
             if (NotifSerial != null)
@@ -85,6 +85,8 @@ namespace Drivers.Debugger
                 NotifSerial = null;
             }
         }
+
+        public event NotificationHandler NotificationEvent;
 
         public bool Init(string PipeName, string BinFolderPath, string AssemblyName)
         {
@@ -107,7 +109,7 @@ namespace Drivers.Debugger
         private void MsgSerial_OnConnected()
         {
             string str;
-            while((str = MsgSerial.ReadLine()) != "Debug thread :D")
+            while ((str = MsgSerial.ReadLine()) != "Debug thread :D")
             {
                 System.Threading.Thread.Sleep(100);
             }
@@ -128,7 +130,7 @@ namespace Drivers.Debugger
                         NotificationReceived = true;
                         if (!WaitingForNotification)
                         {
-                            NotificationEvent.Invoke(new NotificationEventArgs()
+                            NotificationEvent.Invoke(new NotificationEventArgs
                             {
                                 NotificationByte = NotifByte
                             }, this);
@@ -156,6 +158,7 @@ namespace Drivers.Debugger
 
             return ReadToEndOfCommand();
         }
+
         public void AbortCommand()
         {
             MsgSerial.AbortRead = true;
@@ -171,16 +174,14 @@ namespace Drivers.Debugger
                 {
                     return true;
                 }
-                else
-                {
-                    return false;
-                }
+                return false;
             }
             catch
             {
                 return false;
             }
         }
+
         public Dictionary<uint, Process> GetThreads()
         {
             try
@@ -195,8 +196,8 @@ namespace Drivers.Debugger
                     string[] LineParts = Line.Split(':').Select(x => x.Trim()).ToArray();
                     if (LineParts[0] == "- Process")
                     {
-                        uint Id = uint.Parse(LineParts[1].Substring(2), System.Globalization.NumberStyles.HexNumber);
-                        CurrentProcess = new Process()
+                        uint Id = uint.Parse(LineParts[1].Substring(2), NumberStyles.HexNumber);
+                        CurrentProcess = new Process
                         {
                             Id = Id,
                             Name = LineParts[2],
@@ -206,11 +207,11 @@ namespace Drivers.Debugger
                     }
                     else if (LineParts[0] == "- Thread")
                     {
-                        uint Id = uint.Parse(LineParts[1].Substring(2), System.Globalization.NumberStyles.HexNumber);
-                        CurrentProcess.Threads.Add(Id, new Thread()
+                        uint Id = uint.Parse(LineParts[1].Substring(2), NumberStyles.HexNumber);
+                        CurrentProcess.Threads.Add(Id, new Thread
                         {
                             Id = Id,
-                            Name = LineParts[3],
+                            Name = Line.Substring(Line.IndexOf(LineParts[3])),
                             State = (Thread.States)Enum.Parse(typeof(Thread.States), LineParts[2].Replace(" ", ""))
                         });
                     }
@@ -223,13 +224,14 @@ namespace Drivers.Debugger
                 return new Dictionary<uint, Process>();
             }
         }
+
         public Dictionary<string, uint> GetRegisters(uint ProcessId, uint ThreadId)
         {
             Dictionary<string, uint> Result = new Dictionary<string, uint>();
 
             try
             {
-                string[] Lines = ExecuteCommand("regs " + ProcessId.ToString() + " " + ThreadId.ToString());
+                string[] Lines = ExecuteCommand("regs " + ProcessId + " " + ThreadId);
 
                 for (int i = 1; i < Lines.Length; i++)
                 {
@@ -238,7 +240,7 @@ namespace Drivers.Debugger
                         string[] LineParts = Lines[i].Split(':');
                         string Reg = LineParts[0].Trim().Substring(2);
                         string ValStr = LineParts[1].Trim();
-                        uint Val = uint.Parse(ValStr.Substring(2), System.Globalization.NumberStyles.HexNumber);
+                        uint Val = uint.Parse(ValStr.Substring(2), NumberStyles.HexNumber);
                         Result.Add(Reg, Val);
                     }
                 }
@@ -250,11 +252,12 @@ namespace Drivers.Debugger
 
             return Result;
         }
+
         public bool SuspendThread(uint ProcessId, int ThreadId)
         {
             try
             {
-                string[] Lines = ExecuteCommand("suspend " + ProcessId.ToString() + " " + ThreadId.ToString());
+                string[] Lines = ExecuteCommand("suspend " + ProcessId + " " + ThreadId);
                 return true;
             }
             catch
@@ -262,11 +265,12 @@ namespace Drivers.Debugger
                 return false;
             }
         }
+
         public bool ResumeThread(uint ProcessId, int ThreadId)
         {
             try
             {
-                string[] Lines = ExecuteCommand("resume " + ProcessId.ToString() + " " + ThreadId.ToString());
+                string[] Lines = ExecuteCommand("resume " + ProcessId + " " + ThreadId);
                 return true;
             }
             catch
@@ -274,12 +278,13 @@ namespace Drivers.Debugger
                 return false;
             }
         }
+
         public bool StepThread(uint ProcessId, int ThreadId)
         {
             try
             {
                 //BeginWaitForNotification();
-                string[] Lines = ExecuteCommand("step " + ProcessId.ToString() + " " + ThreadId.ToString());
+                string[] Lines = ExecuteCommand("step " + ProcessId + " " + ThreadId);
                 //EndWaitForNotification();
                 return true;
             }
@@ -288,12 +293,13 @@ namespace Drivers.Debugger
                 return false;
             }
         }
+
         public bool SingleStepThread(uint ProcessId, int ThreadId)
         {
             try
             {
                 //BeginWaitForNotification();
-                string[] Lines = ExecuteCommand("ss " + ProcessId.ToString() + " " + ThreadId.ToString());
+                string[] Lines = ExecuteCommand("ss " + ProcessId + " " + ThreadId);
                 //EndWaitForNotification();
                 return true;
             }
@@ -302,12 +308,15 @@ namespace Drivers.Debugger
                 return false;
             }
         }
+
         public bool SingleStepThreadToAddress(uint ProcessId, int ThreadId, uint Address)
         {
             try
             {
                 //BeginWaitForNotification();
-                string[] Lines = ExecuteCommand("sta " + ProcessId.ToString() + " " + ThreadId.ToString() + " " + Address.ToString("X8"));
+                string[] Lines =
+                    ExecuteCommand("sta " + ProcessId + " " + ThreadId + " " +
+                                   Address.ToString("X8"));
                 //EndWaitForNotification();
                 return true;
             }
@@ -316,11 +325,12 @@ namespace Drivers.Debugger
                 return false;
             }
         }
-        public bool ClearBreakpoint(uint Address)
+
+        public bool ClearBreakpoint(uint ProcessId, uint Address)
         {
             try
             {
-                string[] Lines = ExecuteCommand("bpc " + Address.ToString("X8"));
+                string[] Lines = ExecuteCommand("bpc " + ProcessId + " " + Address.ToString("X8"));
                 BreakpointAddresses.Remove(Address);
                 return true;
             }
@@ -329,14 +339,15 @@ namespace Drivers.Debugger
             }
             return false;
         }
-        public bool SetBreakpoint(uint Address)
+
+        public bool SetBreakpoint(uint ProcessId, uint Address)
         {
             try
             {
                 if (!BreakpointAddresses.Contains(Address))
                 {
                     BreakpointAddresses.Add(Address);
-                    string[] Lines = ExecuteCommand("bps " + Address.ToString("X8"));
+                    string[] Lines = ExecuteCommand("bps " + ProcessId + " " + Address.ToString("X8"));
                     return true;
                 }
             }
@@ -345,11 +356,14 @@ namespace Drivers.Debugger
             }
             return false;
         }
+
         public string GetMemoryValues(uint ProcessId, uint Address, int Length, int UnitSize)
         {
             try
             {
-                string[] Lines = ExecuteCommand("mem " + ProcessId.ToString() + " " + Address.ToString("X8") + " " + Length.ToString() + " " + UnitSize.ToString());
+                string[] Lines =
+                    ExecuteCommand("mem " + ProcessId + " " + Address.ToString("X8") + " " +
+                                   Length + " " + UnitSize);
                 return Lines[1];
             }
             catch
@@ -367,29 +381,32 @@ namespace Drivers.Debugger
 
             if (DebugData.AddressMappings.ContainsKey(Address))
             {
-                return new Tuple<uint, string>(Address, DebugData.AddressMappings[Address].OrderBy(x => x.Length).First());
+                return new Tuple<uint, string>(Address,
+                    DebugData.AddressMappings[Address].OrderBy(x => x.Length).First());
             }
-            else
-            {
-                return null;
-            }
+            return null;
         }
+
         public string GetMethodLabel(string FullLabel)
         {
             return FullLabel.Split('.')[0];
         }
+
         public string GetMethodASM(string MethodLabel)
         {
             return DebugData.ReadMethodASM(MethodLabel);
         }
+
         public List<KeyValuePair<string, List<string>>> GetDebugOps(string Filter)
         {
             return DebugData.DebugOps.Where(x => x.Key.Contains(Filter)).ToList();
         }
+
         public List<KeyValuePair<string, List<string>>> GetLabels(string Filter)
         {
             List<KeyValuePair<string, List<string>>> Result = new List<KeyValuePair<string, List<string>>>();
-            List<string> FilteredMethodLabels = DebugData.Methods.Where(x => x.Key.Contains(Filter)).Select(x => x.Key).ToList();
+            List<string> FilteredMethodLabels =
+                DebugData.Methods.Where(x => x.Key.Contains(Filter)).Select(x => x.Key).ToList();
             foreach (string AMethodLabel in FilteredMethodLabels)
             {
                 List<string> AllLabels = DebugData.LabelMappings
@@ -404,6 +421,7 @@ namespace Drivers.Debugger
             }
             return Result;
         }
+
         public uint GetLabelAddress(string FullLabel)
         {
             if (DebugData.LabelMappings.ContainsKey(FullLabel))
@@ -413,6 +431,7 @@ namespace Drivers.Debugger
 
             return 0xFFFFFFFF;
         }
+
         public MethodInfo GetMethodInfo(string MethodLabel)
         {
             if (DebugData.Methods.ContainsKey(MethodLabel))
@@ -421,6 +440,7 @@ namespace Drivers.Debugger
             }
             return null;
         }
+
         public TypeInfo GetTypeInfo(string TypeLabel)
         {
             if (DebugData.Types.ContainsKey(TypeLabel))
@@ -429,10 +449,11 @@ namespace Drivers.Debugger
             }
             return null;
         }
+
         public bool IsDebugLabel(string MethodLabel, string LocalLabel)
         {
             return DebugData.DebugOps.ContainsKey(MethodLabel) &&
-                DebugData.DebugOps[MethodLabel].Contains(LocalLabel);
+                   DebugData.DebugOps[MethodLabel].Contains(LocalLabel);
         }
 
         public bool IsBreakpointAddress(uint Address)
@@ -448,13 +469,28 @@ namespace Drivers.Debugger
             {
                 Result.Add(str);
             }
+            AddToLog(Result.ToArray());
             return Result.ToArray();
         }
+
+        private void AddToLog(string[] Lines)
+        {
+            if (LogBox.InvokeRequired)
+            {
+                LogBox.Invoke(new StringArrayDelegate(AddToLog), new object[] {Lines});
+            }
+            else
+            {
+                LogBox.AppendText(string.Join(Environment.NewLine, Lines) + "\n");
+            }
+        }
+
         private void BeginWaitForNotification()
         {
             WaitingForNotification = true;
             NotificationReceived = false;
         }
+
         private void EndWaitForNotification()
         {
             while (!NotificationReceived && !Terminating && WaitingForNotification)

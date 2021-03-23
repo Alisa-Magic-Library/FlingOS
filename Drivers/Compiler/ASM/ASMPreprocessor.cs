@@ -1,4 +1,5 @@
 ﻿#region LICENSE
+
 // ---------------------------------- LICENSE ---------------------------------- //
 //
 //    Fling OS - The educational operating system
@@ -22,42 +23,40 @@
 //		For paper mail address, please contact via email for details.
 //
 // ------------------------------------------------------------------------------ //
+
 #endregion
-    
-using System;
-using System.Collections.Generic;
+
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Drivers.Compiler.ASM.ASMOps;
 
 namespace Drivers.Compiler.ASM
 {
     /// <summary>
-    /// The ASM Preprocessor manages evaluating ASM blocks and altering the ASM (by additions,
-    /// removals and even discarding entire blocks). It executes before the ASM Processor 
-    /// performs the main compilation step.
+    ///     The ASM Preprocessor manages evaluating ASM blocks and altering the ASM (by additions,
+    ///     removals and even discarding entire blocks). It executes before the ASM Processor
+    ///     performs the main compilation step.
     /// </summary>
     /// <remarks>
-    /// <para>
-    /// Empty ASM blocks cause problems in later processing so are removed from the library
-    /// entirely. For this reason, the rest of the compiler should avoid caching copies of 
-    /// ASM blocks when they aren't currently processing them.
-    /// </para>
-    /// <para>
-    /// The ASM Preprocessor also handles injecting IL ops for the method label, the global 
-    /// labels and the external labels.
-    /// </para>
+    ///     <para>
+    ///         Empty ASM blocks cause problems in later processing so are removed from the library
+    ///         entirely. For this reason, the rest of the compiler should avoid caching copies of
+    ///         ASM blocks when they aren't currently processing them.
+    ///     </para>
+    ///     <para>
+    ///         The ASM Preprocessor also handles injecting IL ops for the method label, the global
+    ///         labels and the external labels.
+    ///     </para>
     /// </remarks>
     public static class ASMPreprocessor
     {
         /// <summary>
-        /// Preprocesses the specified ASM library.
+        ///     Preprocesses the specified ASM library.
         /// </summary>
         /// <remarks>
-        /// <para>
-        /// Loops over all the ASM blocks, removing empty ones, checking plug paths and 
-        /// preprocessing non-empty blocks.
-        /// </para>
+        ///     <para>
+        ///         Loops over all the ASM blocks, removing empty ones, checking plug paths and
+        ///         preprocessing non-empty blocks.
+        ///     </para>
         /// </remarks>
         /// <param name="TheLibrary">The library to preprocess.</param>
         /// <returns>Always CompileResult.OK. In all other cases, exceptions are thrown.</returns>
@@ -80,7 +79,6 @@ namespace Drivers.Compiler.ASM
                     {
                         TheLibrary.ASMBlocks.RemoveAt(i);
                         i--;
-                        continue;
                     }
                 }
                 else
@@ -99,35 +97,43 @@ namespace Drivers.Compiler.ASM
         }
 
         /// <summary>
-        /// Preprocesses the given ASM block.
+        ///     Preprocesses the given ASM block.
         /// </summary>
         /// <param name="theBlock">The block to preprocess.</param>
         private static void Preprocess(ASMBlock theBlock)
         {
             // Due to "insert 0", asm ops are constructed in reverse order here
 
+            int InsertIndex = 0;
+
+            if (!typeof(ASMHeader).IsAssignableFrom(theBlock.ASMOps[InsertIndex].GetType()))
+            {
+                ASMOp newHeaderOp = TargetArchitecture.CreateASMOp(OpCodes.Header, "text");
+                theBlock.ASMOps.Insert(InsertIndex, newHeaderOp);
+            }
+
+            InsertIndex = 1;
+
             string currMethodLabel = theBlock.GenerateMethodLabel();
             if (currMethodLabel != null)
             {
-                ASM.ASMOp newLabelOp = TargetArchitecture.CreateASMOp(ASM.OpCodes.Label, true);
-                theBlock.ASMOps.Insert(0, newLabelOp);
+                ASMOp newLabelOp = TargetArchitecture.CreateASMOp(OpCodes.Label, true);
+                theBlock.ASMOps.Insert(InsertIndex, newLabelOp);
             }
             if (currMethodLabel != null)
             {
-                ASM.ASMOp newGlobalLabelOp = TargetArchitecture.CreateASMOp(ASM.OpCodes.GlobalLabel, currMethodLabel);
-                theBlock.ASMOps.Insert(0, newGlobalLabelOp);
+                ASMOp newGlobalLabelOp = TargetArchitecture.CreateASMOp(OpCodes.GlobalLabel, currMethodLabel);
+                theBlock.ASMOps.Insert(InsertIndex, newGlobalLabelOp);
             }
-            
+
             foreach (string anExternalLabel in theBlock.ExternalLabels.Distinct())
             {
                 if (anExternalLabel != currMethodLabel)
                 {
-                    ASM.ASMOp newExternalLabelOp = TargetArchitecture.CreateASMOp(ASM.OpCodes.ExternalLabel, anExternalLabel);
-                    theBlock.ASMOps.Insert(0, newExternalLabelOp);
+                    ASMOp newExternalLabelOp = TargetArchitecture.CreateASMOp(OpCodes.ExternalLabel, anExternalLabel);
+                    theBlock.ASMOps.Insert(InsertIndex, newExternalLabelOp);
                 }
             }
-            ASM.ASMOp newHeaderOp = TargetArchitecture.CreateASMOp(ASM.OpCodes.Header);
-            theBlock.ASMOps.Insert(0, newHeaderOp);
         }
     }
 }

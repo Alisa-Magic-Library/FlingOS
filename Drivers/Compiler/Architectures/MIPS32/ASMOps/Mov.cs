@@ -1,4 +1,5 @@
 ﻿#region LICENSE
+
 // ---------------------------------- LICENSE ---------------------------------- //
 //
 //    Fling OS - The educational operating system
@@ -22,17 +23,15 @@
 //		For paper mail address, please contact via email for details.
 //
 // ------------------------------------------------------------------------------ //
+
 #endregion
-    
+
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Drivers.Compiler.ASM;
 
 namespace Drivers.Compiler.Architectures.MIPS32.ASMOps
 {
-    public class Mov : ASM.ASMOp
+    public class Mov : ASMOp
     {
         public enum MoveTypes
         {
@@ -42,13 +41,14 @@ namespace Drivers.Compiler.Architectures.MIPS32.ASMOps
             RegToReg
         }
 
-        public OperandSize Size;
-        public string Src;
         public string Dest;
         public MoveTypes MoveType = MoveTypes.RegToReg;
         public bool SignExtend = false;
 
-        public override string Convert(ASM.ASMBlock theBlock)
+        public OperandSize Size;
+        public string Src;
+
+        public override string Convert(ASMBlock TheBlock)
         {
             if (MoveType == MoveTypes.SrcRegToDestMemory)
             {
@@ -64,7 +64,7 @@ namespace Drivers.Compiler.Architectures.MIPS32.ASMOps
                         throw new NotSupportedException("MIPS: Unrecognised move operand sizes. (DestIsMemory)");
                 }
             }
-            else if (MoveType == MoveTypes.SrcMemoryToDestReg)
+            if (MoveType == MoveTypes.SrcMemoryToDestReg)
             {
                 if (SignExtend)
                 {
@@ -80,29 +80,23 @@ namespace Drivers.Compiler.Architectures.MIPS32.ASMOps
                             throw new NotSupportedException("MIPS: Unrecognised move operand sizes. (SrcIsMemory)");
                     }
                 }
-                else
+                switch (Size)
                 {
-                    switch (Size)
-                    {
-                        case OperandSize.Byte:
-                            return "lbu " + Dest + ", " + Src;
-                        case OperandSize.Halfword:
-                            return "lhu " + Dest + ", " + Src;
-                        case OperandSize.Word:
-                            return "lw " + Dest + ", " + Src;
-                        default:
-                            throw new NotSupportedException("MIPS: Unrecognised move operand sizes. (SrcIsMemory)");
-                    }
+                    case OperandSize.Byte:
+                        return "lbu " + Dest + ", " + Src;
+                    case OperandSize.Halfword:
+                        return "lhu " + Dest + ", " + Src;
+                    case OperandSize.Word:
+                        return "lw " + Dest + ", " + Src;
+                    default:
+                        throw new NotSupportedException("MIPS: Unrecognised move operand sizes. (SrcIsMemory)");
                 }
             }
-            else if (MoveType == MoveTypes.ImmediateToReg)
+            if (MoveType == MoveTypes.ImmediateToReg)
             {
                 return "add " + Dest + ", $zero, " + Src;
             }
-            else
-            {
-                return "move " + Dest + ", " + Src;
-            }
+            return "move " + Dest + ", " + Src;
         }
     }
 }

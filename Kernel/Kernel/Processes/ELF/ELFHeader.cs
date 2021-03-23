@@ -1,4 +1,5 @@
 ﻿#region LICENSE
+
 // ---------------------------------- LICENSE ---------------------------------- //
 //
 //    Fling OS - The educational operating system
@@ -22,9 +23,10 @@
 //		For paper mail address, please contact via email for details.
 //
 // ------------------------------------------------------------------------------ //
+
 #endregion
-    
-using Kernel.FOS_System;
+
+using Kernel.Framework;
 
 namespace Kernel.Processes.ELF
 {
@@ -34,12 +36,14 @@ namespace Kernel.Processes.ELF
         Class32 = 1,
         Class64 = 2
     }
+
     public enum ELFDataEncoding : byte
     {
         Invalid = 0,
         LSB = 1,
         MSB = 2
     }
+
     public enum ELFFileType : ushort
     {
         None = 0,
@@ -48,6 +52,7 @@ namespace Kernel.Processes.ELF
         Shared = 3,
         Core = 4
     }
+
     public enum ELFMachines : ushort
     {
         None = 0,
@@ -59,9 +64,25 @@ namespace Kernel.Processes.ELF
         Intel80860 = 7,
         MIPS = 8
     }
-    public unsafe class ELFHeader : FOS_System.Object
+
+    public unsafe class ELFHeader : Object
     {
         public const int HEADER_SIZE = 52;
+        public ushort ELFHeaderSize;
+        public byte* EntryPoint;
+        public ELFFileType FileType;
+        public uint flags;
+
+        public byte[] ident;
+        public ELFMachines Machine;
+        public ushort ProgHeaderEntrySize;
+        public ushort ProgHeaderNumEntries;
+        public uint ProgHeaderTableOffset;
+        public ushort SecHeaderEntrySize;
+        public ushort SecHeaderIdxForSecNameStrings;
+        public ushort SecHeaderNumEntries;
+        public uint SecHeaderTableOffset;
+        public uint Version;
 
         public bool SignatureOK
         {
@@ -74,26 +95,20 @@ namespace Kernel.Processes.ELF
                 return OK;
             }
         }
+
         public ELFFileClass FileClass
         {
-            get
-            {
-                return (ELFFileClass)ident[4];
-            }
+            get { return (ELFFileClass)ident[4]; }
         }
+
         public ELFDataEncoding DataEncoding
         {
-            get
-            {
-                return (ELFDataEncoding)ident[5];
-            }
+            get { return (ELFDataEncoding)ident[5]; }
         }
+
         public byte HeaderVersion
         {
-            get
-            {
-                return ident[6];
-            }
+            get { return ident[6]; }
         }
 
         public ELFHeader(byte[] data)
@@ -130,20 +145,5 @@ namespace Kernel.Processes.ELF
             SecHeaderNumEntries = ByteConverter.ToUInt16(data, 48);
             SecHeaderIdxForSecNameStrings = ByteConverter.ToUInt16(data, 50);
         }
-
-        public byte[] ident;
-        public ELFFileType FileType;
-        public ELFMachines Machine;
-        public uint Version;
-        public byte* EntryPoint;
-        public uint ProgHeaderTableOffset;
-        public uint SecHeaderTableOffset;
-        public uint flags;
-        public ushort ELFHeaderSize;
-        public ushort ProgHeaderEntrySize;
-        public ushort ProgHeaderNumEntries;
-        public ushort SecHeaderEntrySize;
-        public ushort SecHeaderNumEntries;
-        public ushort SecHeaderIdxForSecNameStrings;
     }
 }

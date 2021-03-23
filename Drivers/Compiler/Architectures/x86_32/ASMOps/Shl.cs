@@ -1,4 +1,5 @@
 ﻿#region LICENSE
+
 // ---------------------------------- LICENSE ---------------------------------- //
 //
 //    Fling OS - The educational operating system
@@ -22,35 +23,31 @@
 //		For paper mail address, please contact via email for details.
 //
 // ------------------------------------------------------------------------------ //
+
 #endregion
-    
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+
+using Drivers.Compiler.ASM;
 
 namespace Drivers.Compiler.Architectures.x86.ASMOps
 {
-    public class Shl : ASM.ASMOp
+    public class Shl : ASMOp
     {
-        public string Src;
-        public string Dest;
         /// <summary>
-        /// Optional. Set to use Extended Shift (see http://en.wikibooks.org/wiki/X86_Assembly/Shift_and_Rotate#Extended_Shift_Instructions)
+        ///     Optional. Set to use Extended Shift (see
+        ///     http://en.wikibooks.org/wiki/X86_Assembly/Shift_and_Rotate#Extended_Shift_Instructions)
         /// </summary>
         public string Count;
-        
-        public override string Convert(ASM.ASMBlock theBlock)
+
+        public string Dest;
+        public string Src;
+
+        public override string Convert(ASMBlock TheBlock)
         {
             if (!string.IsNullOrWhiteSpace(Count))
             {
                 return "shld " + Dest + ", " + Src + ", " + Count;
             }
-            else
-            {
-                return "shl " + Dest + ", " + Src;
-            }
+            return "shl " + Dest + ", " + Src;
         }
     }
 }

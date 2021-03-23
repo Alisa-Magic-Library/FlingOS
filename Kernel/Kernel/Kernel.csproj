@@ -9,12 +9,13 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>Kernel</RootNamespace>
     <AssemblyName>Kernel</AssemblyName>
-    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <SccProjectName>SAK</SccProjectName>
     <SccLocalPath>SAK</SccLocalPath>
     <SccAuxPath>SAK</SccAuxPath>
     <SccProvider>SAK</SccProvider>
+    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
     <DebugSymbols>true</DebugSymbols>
@@ -100,10 +101,15 @@
   <ItemGroup>
     <Compile Include="CommandHelp.cs" />
     <Compile Include="Console.cs" />
-    <Compile Include="Consoles\AdvancedConsole.cs" />
+    <Compile Include="Consoles\VGAConsole.cs" />
     <Compile Include="Consoles\VirtualConsole.cs" />
     <Compile Include="Debug\Debugger.cs" />
-    <Compile Include="PreReqs.cs" />
+    <Compile Include="Tasks\App\SystemStatusTask.cs" />
+    <Compile Include="Tasks\Driver\FileSystemsDriverTask.cs" />
+    <Compile Include="Tasks\Driver\USBDriverTask.cs" />
+    <Compile Include="Tasks\Driver\PCIDriverTask.cs" />
+    <Compile Include="Tasks\Driver\ATADriverTask.cs" />
+    <Compile Include="Boot.cs" />
     <Compile Include="Kernel.cs" />
     <Compile Include="Processes\DynamicLinkerLoader.cs" />
     <Compile Include="Processes\ELF\ELFFile.cs" />
@@ -115,10 +121,12 @@
     <Compile Include="Processes\ELF\ELFStringTable.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Shell.cs" />
+    <Compile Include="Shells\DeviceShell.cs" />
     <Compile Include="Shells\MainShell.cs" />
-    <Compile Include="Tasks\DeviceManagerTask.cs" />
+    <Compile Include="Tasks\DeviceInfoTask.cs" />
     <Compile Include="Tasks\EasterTask.cs" />
     <Compile Include="Tasks\GCCleanupTask.cs" />
+    <Compile Include="Tasks\Helpers.cs" />
     <Compile Include="Tasks\IdleTask.cs" />
     <Compile Include="Tasks\KernelTask.cs" />
     <Compile Include="Tasks\SampleTask.cs" />
@@ -130,17 +138,45 @@
       <Project>{1fb0e622-d2c6-4a5c-b5b6-d2bb5e502af1}</Project>
       <Name>Drivers.Compiler</Name>
     </ProjectReference>
-    <ProjectReference Include="..\Libraries\Kernel.FOS_System.IO\Kernel.FOS_System.IO.csproj">
+    <ProjectReference Include="..\Libraries\Kernel.FileSystems\Kernel.FileSystems.csproj">
       <Project>{5c9fdb7d-604e-4927-9d3f-e2c599b20797}</Project>
-      <Name>Kernel.FOS_System.IO</Name>
+      <Name>Kernel.FileSystems</Name>
     </ProjectReference>
-    <ProjectReference Include="..\Libraries\Kernel.FOS_System\Kernel.FOS_System.csproj">
+    <ProjectReference Include="..\Libraries\Kernel.Framework\Kernel.Framework.csproj">
       <Project>{66c9b617-b6d9-4006-a7f9-e1df62ed30ad}</Project>
-      <Name>Kernel.FOS_System</Name>
+      <Name>Kernel.Framework</Name>
     </ProjectReference>
-    <ProjectReference Include="..\Libraries\Kernel.Hardware\Kernel.Hardware.csproj">
+    <ProjectReference Include="..\Libraries\Kernel.ATA\Kernel.ATA.csproj">
+      <Project>{2d18c11e-3c86-4131-8de9-c4385c9131b4}</Project>
+      <Name>Kernel.ATA</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Libraries\Kernel.Devices\Kernel.Devices.csproj">
+      <Project>{f7de5ac3-c4ad-4240-91ce-87c1e5eb7b7e}</Project>
+      <Name>Kernel.Devices</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Libraries\Kernel.PCI\Kernel.PCI.csproj">
+      <Project>{02d891e8-4aaa-48fa-8608-5135fb4dc493}</Project>
+      <Name>Kernel.PCI</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Libraries\Kernel.USB\Kernel.USB.csproj">
+      <Project>{63c61b22-f7fb-4de2-8d25-73bc0d1dc04f}</Project>
+      <Name>Kernel.USB</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Libraries\Kernel.VGA\Kernel.VGA.csproj">
+      <Project>{f775ce64-881b-4e6f-b51b-2dcbf5fcc5f0}</Project>
+      <Name>Kernel.VGA</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Libraries\Kernel.VirtualMemory\Kernel.VirtualMemory.csproj">
+      <Project>{2f9d1b2a-6cc2-45e2-bd36-bdf7ab8626b2}</Project>
+      <Name>Kernel.VirtualMemory</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Libraries\Kernel.Multiprocessing\Kernel.Multiprocessing.csproj">
       <Project>{f59b042c-435d-48ed-ad7b-23666931a952}</Project>
-      <Name>Kernel.Hardware</Name>
+      <Name>Kernel.Multiprocessing</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Libraries\Kernel.Pipes\Kernel.Pipes.csproj">
+      <Project>{f64a12df-0514-4f93-90c7-5e86b0a35f86}</Project>
+      <Name>Kernel.Pipes</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>

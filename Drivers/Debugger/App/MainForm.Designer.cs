@@ -62,17 +62,20 @@
             this.NearestLabelAddessBox = new System.Windows.Forms.TextBox();
             this.NearestLabelBox = new System.Windows.Forms.TextBox();
             this.label4 = new System.Windows.Forms.Label();
-            this.Thex86RegistersControl = new Drivers.Debugger.App.x86RegistersControl();
             this.SingleStepButton = new System.Windows.Forms.Button();
             this.StepButton = new System.Windows.Forms.Button();
             this.ResumeButton = new System.Windows.Forms.Button();
-            this.SuspendButton = new System.Windows.Forms.Button();
+            this.DebugButton = new System.Windows.Forms.Button();
             this.RefreshButton = new System.Windows.Forms.Button();
             this.ProcessesTreeView = new System.Windows.Forms.TreeView();
+            this.label11 = new System.Windows.Forms.Label();
+            this.LogBox = new System.Windows.Forms.TextBox();
             this.AbortButton = new System.Windows.Forms.Button();
             this.DestroyButton = new System.Windows.Forms.Button();
             this.TheOpenFileDialog = new System.Windows.Forms.OpenFileDialog();
             this.TheSaveFileDialog = new System.Windows.Forms.SaveFileDialog();
+            this.label12 = new System.Windows.Forms.Label();
+            this.Thex86RegistersControl = new Drivers.Debugger.App.x86RegistersControl();
             this.MainPanel.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -127,7 +130,7 @@
             this.BinPathBox.Name = "BinPathBox";
             this.BinPathBox.Size = new System.Drawing.Size(589, 20);
             this.BinPathBox.TabIndex = 5;
-            this.BinPathBox.Text = "C:\\Fling OS\\Fling OS\\Kernel\\Kernel\\bin\\Debug";
+            this.BinPathBox.Text = "C:\\Users\\Edward\\Documents\\FlingOS\\FlingOS\\Kernel\\Kernel\\bin\\Debug";
             // 
             // ConnectButton
             // 
@@ -156,6 +159,7 @@
             this.MainPanel.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
+            this.MainPanel.Controls.Add(this.label12);
             this.MainPanel.Controls.Add(this.StepThreadToLabelButton);
             this.MainPanel.Controls.Add(this.ViewBPASMCheckBox);
             this.MainPanel.Controls.Add(this.SaveToFileListButton);
@@ -184,13 +188,13 @@
             this.MainPanel.Controls.Add(this.SingleStepButton);
             this.MainPanel.Controls.Add(this.StepButton);
             this.MainPanel.Controls.Add(this.ResumeButton);
-            this.MainPanel.Controls.Add(this.SuspendButton);
+            this.MainPanel.Controls.Add(this.DebugButton);
             this.MainPanel.Controls.Add(this.RefreshButton);
             this.MainPanel.Controls.Add(this.ProcessesTreeView);
             this.MainPanel.Enabled = false;
             this.MainPanel.Location = new System.Drawing.Point(12, 65);
             this.MainPanel.Name = "MainPanel";
-            this.MainPanel.Size = new System.Drawing.Size(1042, 832);
+            this.MainPanel.Size = new System.Drawing.Size(1042, 709);
             this.MainPanel.TabIndex = 8;
             // 
             // StepThreadToLabelButton
@@ -208,7 +212,7 @@
             this.ViewBPASMCheckBox.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
             this.ViewBPASMCheckBox.Appearance = System.Windows.Forms.Appearance.Button;
             this.ViewBPASMCheckBox.AutoSize = true;
-            this.ViewBPASMCheckBox.Location = new System.Drawing.Point(729, 800);
+            this.ViewBPASMCheckBox.Location = new System.Drawing.Point(729, 677);
             this.ViewBPASMCheckBox.Name = "ViewBPASMCheckBox";
             this.ViewBPASMCheckBox.Size = new System.Drawing.Size(66, 23);
             this.ViewBPASMCheckBox.TabIndex = 30;
@@ -219,7 +223,7 @@
             // SaveToFileListButton
             // 
             this.SaveToFileListButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-            this.SaveToFileListButton.Location = new System.Drawing.Point(925, 600);
+            this.SaveToFileListButton.Location = new System.Drawing.Point(925, 477);
             this.SaveToFileListButton.Name = "SaveToFileListButton";
             this.SaveToFileListButton.Size = new System.Drawing.Size(114, 23);
             this.SaveToFileListButton.TabIndex = 29;
@@ -230,7 +234,7 @@
             // SetFromFileListButton
             // 
             this.SetFromFileListButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-            this.SetFromFileListButton.Location = new System.Drawing.Point(925, 800);
+            this.SetFromFileListButton.Location = new System.Drawing.Point(925, 677);
             this.SetFromFileListButton.Name = "SetFromFileListButton";
             this.SetFromFileListButton.Size = new System.Drawing.Size(114, 23);
             this.SetFromFileListButton.TabIndex = 28;
@@ -241,7 +245,7 @@
             // LoadLayerButton
             // 
             this.LoadLayerButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-            this.LoadLayerButton.Location = new System.Drawing.Point(203, 800);
+            this.LoadLayerButton.Location = new System.Drawing.Point(203, 677);
             this.LoadLayerButton.Name = "LoadLayerButton";
             this.LoadLayerButton.Size = new System.Drawing.Size(75, 23);
             this.LoadLayerButton.TabIndex = 27;
@@ -253,7 +257,7 @@
             // 
             this.LocalsTreeView.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.LocalsTreeView.HideSelection = false;
-            this.LocalsTreeView.Location = new System.Drawing.Point(7, 643);
+            this.LocalsTreeView.Location = new System.Drawing.Point(7, 520);
             this.LocalsTreeView.Name = "LocalsTreeView";
             this.LocalsTreeView.Size = new System.Drawing.Size(466, 151);
             this.LocalsTreeView.TabIndex = 26;
@@ -262,7 +266,7 @@
             // 
             this.ArgumentsTreeView.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.ArgumentsTreeView.HideSelection = false;
-            this.ArgumentsTreeView.Location = new System.Drawing.Point(7, 463);
+            this.ArgumentsTreeView.Location = new System.Drawing.Point(7, 340);
             this.ArgumentsTreeView.Name = "ArgumentsTreeView";
             this.ArgumentsTreeView.Size = new System.Drawing.Size(466, 160);
             this.ArgumentsTreeView.TabIndex = 25;
@@ -271,7 +275,7 @@
             // 
             this.label10.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.label10.AutoSize = true;
-            this.label10.Location = new System.Drawing.Point(4, 627);
+            this.label10.Location = new System.Drawing.Point(4, 504);
             this.label10.Name = "label10";
             this.label10.Size = new System.Drawing.Size(122, 13);
             this.label10.TabIndex = 24;
@@ -281,7 +285,7 @@
             // 
             this.label9.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.label9.AutoSize = true;
-            this.label9.Location = new System.Drawing.Point(4, 447);
+            this.label9.Location = new System.Drawing.Point(4, 324);
             this.label9.Name = "label9";
             this.label9.Size = new System.Drawing.Size(63, 13);
             this.label9.TabIndex = 22;
@@ -290,7 +294,7 @@
             // SetBreakpointButton
             // 
             this.SetBreakpointButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-            this.SetBreakpointButton.Location = new System.Drawing.Point(492, 800);
+            this.SetBreakpointButton.Location = new System.Drawing.Point(492, 677);
             this.SetBreakpointButton.Name = "SetBreakpointButton";
             this.SetBreakpointButton.Size = new System.Drawing.Size(75, 23);
             this.SetBreakpointButton.TabIndex = 21;
@@ -301,7 +305,7 @@
             // ClearBreakpointButton
             // 
             this.ClearBreakpointButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-            this.ClearBreakpointButton.Location = new System.Drawing.Point(492, 600);
+            this.ClearBreakpointButton.Location = new System.Drawing.Point(492, 477);
             this.ClearBreakpointButton.Name = "ClearBreakpointButton";
             this.ClearBreakpointButton.Size = new System.Drawing.Size(75, 23);
             this.ClearBreakpointButton.TabIndex = 20;
@@ -314,7 +318,7 @@
             this.LabelsTreeView.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
             this.LabelsTreeView.HideSelection = false;
-            this.LabelsTreeView.Location = new System.Drawing.Point(492, 654);
+            this.LabelsTreeView.Location = new System.Drawing.Point(492, 531);
             this.LabelsTreeView.Name = "LabelsTreeView";
             this.LabelsTreeView.Size = new System.Drawing.Size(547, 140);
             this.LabelsTreeView.TabIndex = 19;
@@ -324,7 +328,7 @@
             // 
             this.label8.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.label8.AutoSize = true;
-            this.label8.Location = new System.Drawing.Point(489, 638);
+            this.label8.Location = new System.Drawing.Point(489, 515);
             this.label8.Name = "label8";
             this.label8.Size = new System.Drawing.Size(41, 13);
             this.label8.TabIndex = 18;
@@ -334,7 +338,7 @@
             // 
             this.label7.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.label7.AutoSize = true;
-            this.label7.Location = new System.Drawing.Point(489, 468);
+            this.label7.Location = new System.Drawing.Point(489, 345);
             this.label7.Name = "label7";
             this.label7.Size = new System.Drawing.Size(66, 13);
             this.label7.TabIndex = 17;
@@ -345,7 +349,7 @@
             this.BreakpointsTreeView.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
             this.BreakpointsTreeView.HideSelection = false;
-            this.BreakpointsTreeView.Location = new System.Drawing.Point(492, 484);
+            this.BreakpointsTreeView.Location = new System.Drawing.Point(492, 361);
             this.BreakpointsTreeView.Name = "BreakpointsTreeView";
             this.BreakpointsTreeView.Size = new System.Drawing.Size(547, 109);
             this.BreakpointsTreeView.TabIndex = 16;
@@ -355,7 +359,7 @@
             // 
             this.FilterBox.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.FilterBox.Location = new System.Drawing.Point(530, 436);
+            this.FilterBox.Location = new System.Drawing.Point(530, 313);
             this.FilterBox.Name = "FilterBox";
             this.FilterBox.Size = new System.Drawing.Size(509, 20);
             this.FilterBox.TabIndex = 15;
@@ -365,7 +369,7 @@
             // 
             this.label6.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.label6.AutoSize = true;
-            this.label6.Location = new System.Drawing.Point(489, 439);
+            this.label6.Location = new System.Drawing.Point(489, 316);
             this.label6.Name = "label6";
             this.label6.Size = new System.Drawing.Size(35, 13);
             this.label6.TabIndex = 14;
@@ -375,7 +379,7 @@
             // 
             this.MethodLocalLabelLabel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.MethodLocalLabelLabel.AutoSize = true;
-            this.MethodLocalLabelLabel.Location = new System.Drawing.Point(369, 395);
+            this.MethodLocalLabelLabel.Location = new System.Drawing.Point(370, 271);
             this.MethodLocalLabelLabel.Name = "MethodLocalLabelLabel";
             this.MethodLocalLabelLabel.Size = new System.Drawing.Size(66, 13);
             this.MethodLocalLabelLabel.TabIndex = 13;
@@ -390,7 +394,7 @@
             this.CurrentMethodBox.Multiline = true;
             this.CurrentMethodBox.Name = "CurrentMethodBox";
             this.CurrentMethodBox.ScrollBars = System.Windows.Forms.ScrollBars.Both;
-            this.CurrentMethodBox.Size = new System.Drawing.Size(667, 335);
+            this.CurrentMethodBox.Size = new System.Drawing.Size(667, 211);
             this.CurrentMethodBox.TabIndex = 12;
             this.CurrentMethodBox.WordWrap = false;
             // 
@@ -437,21 +441,6 @@
             this.label4.TabIndex = 7;
             this.label4.Text = "Nearest label :";
             // 
-            // Thex86RegistersControl
-            // 
-            this.Thex86RegistersControl.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-            this.Thex86RegistersControl.EAX = ((uint)(0u));
-            this.Thex86RegistersControl.EBP = ((uint)(0u));
-            this.Thex86RegistersControl.EBX = ((uint)(0u));
-            this.Thex86RegistersControl.ECX = ((uint)(0u));
-            this.Thex86RegistersControl.EDX = ((uint)(0u));
-            this.Thex86RegistersControl.EIP = ((uint)(0u));
-            this.Thex86RegistersControl.ESP = ((uint)(0u));
-            this.Thex86RegistersControl.Location = new System.Drawing.Point(4, 310);
-            this.Thex86RegistersControl.Name = "Thex86RegistersControl";
-            this.Thex86RegistersControl.Size = new System.Drawing.Size(255, 136);
-            this.Thex86RegistersControl.TabIndex = 6;
-            // 
             // SingleStepButton
             // 
             this.SingleStepButton.Location = new System.Drawing.Point(273, 135);
@@ -482,15 +471,15 @@
             this.ResumeButton.UseVisualStyleBackColor = true;
             this.ResumeButton.Click += new System.EventHandler(this.ResumeButton_Click);
             // 
-            // SuspendButton
+            // DebugButton
             // 
-            this.SuspendButton.Location = new System.Drawing.Point(273, 48);
-            this.SuspendButton.Name = "SuspendButton";
-            this.SuspendButton.Size = new System.Drawing.Size(75, 23);
-            this.SuspendButton.TabIndex = 2;
-            this.SuspendButton.Text = "Suspend";
-            this.SuspendButton.UseVisualStyleBackColor = true;
-            this.SuspendButton.Click += new System.EventHandler(this.SuspendButton_Click);
+            this.DebugButton.Location = new System.Drawing.Point(273, 48);
+            this.DebugButton.Name = "DebugButton";
+            this.DebugButton.Size = new System.Drawing.Size(75, 23);
+            this.DebugButton.TabIndex = 2;
+            this.DebugButton.Text = "Debug";
+            this.DebugButton.UseVisualStyleBackColor = true;
+            this.DebugButton.Click += new System.EventHandler(this.DebugButton_Click);
             // 
             // RefreshButton
             // 
@@ -513,14 +502,35 @@
             treeNode1.Text = "Press refresh to start";
             this.ProcessesTreeView.Nodes.AddRange(new System.Windows.Forms.TreeNode[] {
             treeNode1});
-            this.ProcessesTreeView.Size = new System.Drawing.Size(263, 301);
+            this.ProcessesTreeView.Size = new System.Drawing.Size(263, 139);
             this.ProcessesTreeView.TabIndex = 0;
             this.ProcessesTreeView.AfterSelect += new System.Windows.Forms.TreeViewEventHandler(this.ProcessesTreeView_AfterSelect);
+            // 
+            // label11
+            // 
+            this.label11.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+            this.label11.AutoSize = true;
+            this.label11.Location = new System.Drawing.Point(16, 777);
+            this.label11.Name = "label11";
+            this.label11.Size = new System.Drawing.Size(28, 13);
+            this.label11.TabIndex = 33;
+            this.label11.Text = "Log:";
+            // 
+            // LogBox
+            // 
+            this.LogBox.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.LogBox.Location = new System.Drawing.Point(19, 793);
+            this.LogBox.Multiline = true;
+            this.LogBox.Name = "LogBox";
+            this.LogBox.ScrollBars = System.Windows.Forms.ScrollBars.Both;
+            this.LogBox.Size = new System.Drawing.Size(1032, 179);
+            this.LogBox.TabIndex = 32;
             // 
             // AbortButton
             // 
             this.AbortButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-            this.AbortButton.Location = new System.Drawing.Point(979, 907);
+            this.AbortButton.Location = new System.Drawing.Point(979, 978);
             this.AbortButton.Name = "AbortButton";
             this.AbortButton.Size = new System.Drawing.Size(75, 23);
             this.AbortButton.TabIndex = 9;
@@ -547,12 +557,39 @@
             // 
             this.TheSaveFileDialog.Title = "Save breakpoints";
             // 
+            // label12
+            // 
+            this.label12.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+            this.label12.AutoSize = true;
+            this.label12.Location = new System.Drawing.Point(530, 294);
+            this.label12.Name = "label12";
+            this.label12.Size = new System.Drawing.Size(352, 13);
+            this.label12.TabIndex = 32;
+            this.label12.Text = "Enter at least 10 characters to filter/search for labels (e.g. PCIDriverTask)";
+            // 
+            // Thex86RegistersControl
+            // 
+            this.Thex86RegistersControl.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+            this.Thex86RegistersControl.EAX = ((uint)(0u));
+            this.Thex86RegistersControl.EBP = ((uint)(0u));
+            this.Thex86RegistersControl.EBX = ((uint)(0u));
+            this.Thex86RegistersControl.ECX = ((uint)(0u));
+            this.Thex86RegistersControl.EDX = ((uint)(0u));
+            this.Thex86RegistersControl.EIP = ((uint)(0u));
+            this.Thex86RegistersControl.ESP = ((uint)(0u));
+            this.Thex86RegistersControl.Location = new System.Drawing.Point(3, 148);
+            this.Thex86RegistersControl.Name = "Thex86RegistersControl";
+            this.Thex86RegistersControl.Size = new System.Drawing.Size(255, 136);
+            this.Thex86RegistersControl.TabIndex = 6;
+            // 
             // MainForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(1066, 938);
+            this.ClientSize = new System.Drawing.Size(1066, 1009);
+            this.Controls.Add(this.label11);
             this.Controls.Add(this.DestroyButton);
+            this.Controls.Add(this.LogBox);
             this.Controls.Add(this.AbortButton);
             this.Controls.Add(this.MainPanel);
             this.Controls.Add(this.ConnectingProgressBar);
@@ -588,7 +625,7 @@
         private System.Windows.Forms.TreeView ProcessesTreeView;
         private System.Windows.Forms.Button AbortButton;
         private System.Windows.Forms.Button ResumeButton;
-        private System.Windows.Forms.Button SuspendButton;
+        private System.Windows.Forms.Button DebugButton;
         private System.Windows.Forms.Button SingleStepButton;
         private System.Windows.Forms.Button StepButton;
         private System.Windows.Forms.Button DestroyButton;
@@ -619,5 +656,8 @@
         private System.Windows.Forms.SaveFileDialog TheSaveFileDialog;
         private System.Windows.Forms.CheckBox ViewBPASMCheckBox;
         private System.Windows.Forms.Button StepThreadToLabelButton;
+        private System.Windows.Forms.Label label11;
+        private System.Windows.Forms.TextBox LogBox;
+        private System.Windows.Forms.Label label12;
     }
 }

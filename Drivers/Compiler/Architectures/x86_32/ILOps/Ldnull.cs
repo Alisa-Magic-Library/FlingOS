@@ -1,4 +1,5 @@
 ﻿#region LICENSE
+
 // ---------------------------------- LICENSE ---------------------------------- //
 //
 //    Fling OS - The educational operating system
@@ -22,26 +23,22 @@
 //		For paper mail address, please contact via email for details.
 //
 // ------------------------------------------------------------------------------ //
+
 #endregion
-    
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Reflection;
+
+using Drivers.Compiler.Architectures.x86.ASMOps;
 using Drivers.Compiler.IL;
 
 namespace Drivers.Compiler.Architectures.x86
 {
     /// <summary>
-    /// See base class documentation.
+    ///     See base class documentation.
     /// </summary>
     public class Ldnull : IL.ILOps.Ldnull
     {
         public override void PerformStackOperations(ILPreprocessState conversionState, ILOp theOp)
         {
-            conversionState.CurrentStackFrame.Stack.Push(new StackItem()
+            conversionState.CurrentStackFrame.GetStack(theOp).Push(new StackItem
             {
                 isFloat = false,
                 sizeOnStackInBytes = 4,
@@ -51,7 +48,7 @@ namespace Drivers.Compiler.Architectures.x86
         }
 
         /// <summary>
-        /// See base class documentation.
+        ///     See base class documentation.
         /// </summary>
         /// <param name="theOp">See base class documentation.</param>
         /// <param name="conversionState">See base class documentation.</param>
@@ -59,14 +56,14 @@ namespace Drivers.Compiler.Architectures.x86
         public override void Convert(ILConversionState conversionState, ILOp theOp)
         {
             //Load null (i.e. 0 as dword)
-            conversionState.CurrentStackFrame.Stack.Push(new StackItem()
+            conversionState.CurrentStackFrame.GetStack(theOp).Push(new StackItem
             {
                 isFloat = false,
                 sizeOnStackInBytes = 4,
                 isGCManaged = false,
                 isValue = false // Null is a null reference
             });
-            conversionState.Append(new ASMOps.Push() { Size = ASMOps.OperandSize.Dword, Src = "0" });
+            conversionState.Append(new Push {Size = OperandSize.Dword, Src = "0"});
         }
     }
 }

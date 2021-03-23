@@ -1,4 +1,5 @@
 ﻿#region LICENSE
+
 // ---------------------------------- LICENSE ---------------------------------- //
 //
 //    Fling OS - The educational operating system
@@ -22,26 +23,24 @@
 //		For paper mail address, please contact via email for details.
 //
 // ------------------------------------------------------------------------------ //
+
 #endregion
-    
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+
+using Drivers.Compiler.ASM;
+using Drivers.Compiler.ASM.ASMOps;
 
 namespace Drivers.Compiler.Architectures.x86.ASMOps
 {
-    public class StaticField : ASM.ASMOps.ASMStaticField
+    public class StaticField : ASMStaticField
     {
         public StaticField(string fieldID, string size)
             : base(fieldID, size)
         {
         }
 
-        public override string Convert(ASM.ASMBlock theBlock)
+        public override string Convert(ASMBlock TheBlock)
         {
-            return string.Format("GLOBAL {0}:data\r\n{0}: times {1} db 0", FieldID, Size);
+            return string.Format("GLOBAL {0}:\r\n{0}: resb {1}", FieldID, Size);
         }
     }
 }

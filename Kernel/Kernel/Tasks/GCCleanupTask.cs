@@ -1,4 +1,5 @@
 ﻿#region LICENSE
+
 // ---------------------------------- LICENSE ---------------------------------- //
 //
 //    Fling OS - The educational operating system
@@ -22,27 +23,23 @@
 //		For paper mail address, please contact via email for details.
 //
 // ------------------------------------------------------------------------------ //
-#endregion
-    
-#define GCTASK_TRACE
-#undef GCTASK_TRACE
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+#endregion
+
+//#define GCTASK_TRACE
+
+using Kernel.Framework;
+using Kernel.Framework.Processes;
 
 namespace Kernel.Tasks
 {
     public static class GCCleanupTask
     {
-
-        public static bool Terminate = false;
+        public static bool Terminating = false;
 
         public static void Main()
         {
-            while (!Terminate)
+            while (!Terminating)
             {
                 //bool reenable = Hardware.Processes.Scheduler.Enabled;
                 try
@@ -54,19 +51,18 @@ namespace Kernel.Tasks
 
 #if GCTASK_TRACE
                     BasicConsole.SetTextColour(BasicConsole.warning_colour);
-                    BasicConsole.Write("GC cleaning...");
+                    BasicConsole.Write("GC cleaning: ");
                     BasicConsole.WriteLine(Hardware.Processes.ProcessManager.CurrentProcess.Name);
                     BasicConsole.SetTextColour(BasicConsole.default_colour);
 #endif
 
-                    FOS_System.GC.Cleanup();
-                
+                    GC.Cleanup();
+
 #if GCTASK_TRACE
                     BasicConsole.SetTextColour(BasicConsole.warning_colour);
                     BasicConsole.WriteLine("GC stopped (1).");
                     BasicConsole.SetTextColour(BasicConsole.default_colour);
 #endif
-
                 }
                 catch
                 {
@@ -86,7 +82,7 @@ namespace Kernel.Tasks
                 //{
                 //    Hardware.Processes.Scheduler.Enable();
                 //}
-                Processes.SystemCalls.SleepThread(1000);
+                SystemCalls.SleepThread(1000);
             }
         }
     }

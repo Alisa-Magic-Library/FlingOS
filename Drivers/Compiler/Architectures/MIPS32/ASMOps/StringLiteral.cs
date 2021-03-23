@@ -1,4 +1,5 @@
 ﻿#region LICENSE
+
 // ---------------------------------- LICENSE ---------------------------------- //
 //
 //    Fling OS - The educational operating system
@@ -22,31 +23,31 @@
 //		For paper mail address, please contact via email for details.
 //
 // ------------------------------------------------------------------------------ //
+
 #endregion
-    
-using System;
-using System.Collections.Generic;
+
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
+using Drivers.Compiler.ASM;
+using Drivers.Compiler.ASM.ASMOps;
 
 namespace Drivers.Compiler.Architectures.MIPS32.ASMOps
 {
-    public class StringLiteral : ASM.ASMOps.ASMStringLiteral
+    public class StringLiteral : ASMStringLiteral
     {
         public StringLiteral(string id, string stringTypeId, byte[] lengthBytes, char[] characters)
             : base(id, stringTypeId, lengthBytes, characters)
         {
         }
 
-        public override string Convert(ASM.ASMBlock theBlock)
+        public override string Convert(ASMBlock TheBlock)
         {
             StringBuilder LiteralASM = new StringBuilder();
             //This is UTF-16 (Unicode)/ASCII text
             LiteralASM.AppendLine(string.Format(".globl {0}", Id));
             LiteralASM.AppendLine(".align 2");
             LiteralASM.AppendLine(string.Format("{0}:", Id));
-            //Put in type info as FOS_System.String type
+            //Put in type info as Framework.String type
             LiteralASM.AppendLine(string.Format(".word {0}", StringTypeId));
             //Put in string length bytes
             LiteralASM.Append(".align 0\n.byte ");
@@ -61,7 +62,7 @@ namespace Drivers.Compiler.Architectures.MIPS32.ASMOps
             {
                 //Put in string characters (as words)
                 LiteralASM.Append("\n.align 0\n.hword ");
-                for (int i = 0; i < (Characters.Length - 1); i++)
+                for (int i = 0; i < Characters.Length - 1; i++)
                 {
                     LiteralASM.Append((uint)Characters[i]);
                     LiteralASM.Append(", ");

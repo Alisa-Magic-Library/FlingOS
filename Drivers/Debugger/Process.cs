@@ -1,4 +1,5 @@
 ﻿#region LICENSE
+
 // ---------------------------------- LICENSE ---------------------------------- //
 //
 //    Fling OS - The educational operating system
@@ -22,13 +23,10 @@
 //		For paper mail address, please contact via email for details.
 //
 // ------------------------------------------------------------------------------ //
+
 #endregion
-    
-using System;
+
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Drivers.Debugger
 {
@@ -40,6 +38,7 @@ namespace Drivers.Debugger
 
         public Dictionary<uint, Thread> Threads = new Dictionary<uint, Thread>();
     }
+
     public class Thread
     {
         public enum States
@@ -47,6 +46,7 @@ namespace Drivers.Debugger
             Active,
             Inactive,
             Suspended,
+            Debugging,
             NotStarted,
             Terminated
         }

@@ -1,4 +1,5 @@
 ﻿#region LICENSE
+
 // ---------------------------------- LICENSE ---------------------------------- //
 //
 //    Fling OS - The educational operating system
@@ -22,35 +23,39 @@
 //		For paper mail address, please contact via email for details.
 //
 // ------------------------------------------------------------------------------ //
+
 #endregion
-    
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+
+using Drivers.Compiler.Attributes;
+using Kernel.Devices.CPUs;
+using Kernel.Framework;
 
 namespace Kernel.Tasks
 {
     public static unsafe class IdleTask
     {
-        [Drivers.Compiler.Attributes.NoGC]
+        private static readonly bool Terminating = false;
+        private static uint GCThreadId;
+
+        [NoGC]
         public static void Main()
         {
-            // Initialise heap & GC
-            Hardware.Processes.ProcessManager.CurrentProcess.InitHeap();
+            Helpers.ProcessInit("Idle Task", out GCThreadId);
 
-             //TODO: Use some kind of factory for creating the correct CPU class
-            Hardware.Devices.CPU TheCPU = new Hardware.CPUs.CPUx86_32();
+            //TODO: Use some kind of factory for creating the correct CPU class
+            CPU TheCPU = new CPUx86_32();
 
             //Note: Do not use Thread.Sleep within this task because this is the idle task. Its purpose
             //      is to be the only thread left awake when all others are slept.
-            while (true)
+
+            GC.OutputTrace = false;
+
+            while (!Terminating)
             {
-                *((ushort*)0xB809E) = (0x1F00 | '1');
+                *(ushort*)0xB809E = 0x1F00 | '1';
                 TheCPU.Halt();
 
-                *((ushort*)0xB809E) = (0x3F00 | '2');
+                *(ushort*)0xB809E = 0x3F00 | '2';
                 TheCPU.Halt();
             }
         }

@@ -1,4 +1,5 @@
 ﻿#region LICENSE
+
 // ---------------------------------- LICENSE ---------------------------------- //
 //
 //    Fling OS - The educational operating system
@@ -22,41 +23,38 @@
 //		For paper mail address, please contact via email for details.
 //
 // ------------------------------------------------------------------------------ //
+
 #endregion
-    
-using System;
-using Kernel.FOS_System;
-using Kernel.FOS_System.IO;
-using Kernel.FOS_System.IO.Streams;
-using Kernel.FOS_System.Collections;
-using Kernel.Hardware.Processes;
+
+using Kernel.FileSystems;
+using Kernel.Framework;
+using Kernel.Framework.Collections;
+using Kernel.Framework.Processes;
+using Kernel.Multiprocessing;
+using Kernel.Utilities;
+using Kernel.VirtualMemory;
 
 namespace Kernel.Processes.ELF
 {
-    public unsafe class ELFProcess : FOS_System.Object
+    public unsafe class ELFProcess : Object
     {
-        protected Process theProcess = null;
-        public Process TheProcess
-        {
-            get
-            {
-                return theProcess;
-            }
-        }
-
-        protected ELFFile theFile = null;
-        public ELFFile TheFile
-        {
-            get
-            {
-                return theFile;
-            }
-        }
-
-        public List SharedObjectDependencyFilePaths = new List();
+        public uint BaseAddress;
         public List SharedObjectDependencies = new List();
 
-        public uint BaseAddress = 0;
+        public List SharedObjectDependencyFilePaths = new List();
+
+        protected ELFFile theFile;
+        protected Process theProcess;
+
+        public Process TheProcess
+        {
+            get { return theProcess; }
+        }
+
+        public ELFFile TheFile
+        {
+            get { return theFile; }
+        }
 
         public ELFProcess(ELFFile anELFFile)
         {
@@ -65,426 +63,455 @@ namespace Kernel.Processes.ELF
 
         public void Load(bool UserMode)
         {
-            bool OK = true;
-            
-            try
-            {
-                bool DynamicLinkingRequired = false;
+            // TODO: Well now that system calls have been implemented, this entire function is just plain wrong.
 
-                ThreadStartMethod mainMethod = (ThreadStartMethod)Utilities.ObjectUtilities.GetObject(theFile.Header.EntryPoint);
-                theProcess = ProcessManager.CreateProcess(
-                    mainMethod, theFile.TheFile.Name, UserMode);
+            //bool OK = true;
 
-                uint threadStackVirtAddr = (uint)((Thread)theProcess.Threads[0]).State->ThreadStackTop - 4092;
-                uint threadStackPhysAddr = (uint)Hardware.VirtMemManager.GetPhysicalAddress(threadStackVirtAddr);
-                ProcessManager.CurrentProcess.TheMemoryLayout.AddDataPage(threadStackPhysAddr, threadStackVirtAddr);
-                
-                // Load the ELF segments (i.e. the program code and data)
-                BaseAddress = theFile.BaseAddress;
-                LoadSegments(theFile, ref OK, ref DynamicLinkingRequired, BaseAddress);
+            //try
+            //{
+            //    bool DynamicLinkingRequired = false;
 
-                //BasicConsole.WriteLine();
-                
-                #region Relocations
+            //    ThreadStartPoint mainMethod = (ThreadStartPoint)ObjectUtilities.GetObject(theFile.Header.EntryPoint);
+            //    theProcess = ProcessManager.CreateProcess(
+            //        mainMethod, theFile.TheFile.Name, UserMode);
 
-                // Useful articles / specifications on Relocations:
-                //      - Useful / practical explanation of various relocation types: http://eli.thegreenplace.net/2011/08/25/load-time-relocation-of-shared-libraries/#id20
-                //      - Orcale : ELF Specification copy: http://docs.oracle.com/cd/E23824_01/html/819-0690/chapter6-54839.html
-                
-                if (DynamicLinkingRequired)
-                {
-                    Console.Default.WriteLine("Dynamic Linking");
-                    BasicConsole.WriteLine("Dynamic Linking");
+            //    uint threadStackVirtAddr = (uint)((Thread)theProcess.Threads[0]).State->ThreadStackTop -
+            //                               Thread.ThreadStackTopOffset;
+            //    uint threadStackPhysAddr = VirtualMemoryManager.GetPhysicalAddress(threadStackVirtAddr);
+            //    ProcessManager.CurrentProcess.TheMemoryLayout.AddDataPage(threadStackPhysAddr, threadStackVirtAddr);
 
-                    ELFDynamicSection dynamicSection = theFile.DynamicSection;
-                    ELFDynamicSymbolTableSection dynamicSymbolsSection = theFile.DynamicSymbolsSection;
+            //    // Load the ELF segments (i.e. the program code and data)
+            //    BaseAddress = theFile.BaseAddress;
+            //    LoadSegments(theFile, ref OK, ref DynamicLinkingRequired, BaseAddress);
 
-                    ELFStringTable DynamicsStringTable = new ELFStringTable(
-                        dynamicSection.StrTabDynamic.Val_Ptr, dynamicSection.StrTabSizeDynamic.Val_Ptr);
+            //    //BasicConsole.WriteLine();
 
-                    for (uint i = 0; i < dynamicSection.Dynamics.Count; i++)
-                    {
-                        ELFDynamicSection.Dynamic theDyn = dynamicSection[i];
+            //    #region Relocations
 
-                        //BasicConsole.WriteLine("     - Dynamic : ");
-                        //BasicConsole.Write("         - Tag : ");
-                        //BasicConsole.WriteLine((int)theDyn.Tag);
-                        //BasicConsole.Write("         - Value or Pointer : ");
-                        //BasicConsole.WriteLine(theDyn.Val_Ptr);
+            //    // Useful articles / specifications on Relocations:
+            //    //      - Useful / practical explanation of various relocation types: http://eli.thegreenplace.net/2011/08/25/load-time-relocation-of-shared-libraries/#id20
+            //    //      - Orcale : ELF Specification copy: http://docs.oracle.com/cd/E23824_01/html/819-0690/chapter6-54839.html
 
-                        if (theDyn.Tag == ELFDynamicSection.DynamicTag.Needed)
-                        {
-                            BasicConsole.Write("         - Needed library name : ");
+            //    if (DynamicLinkingRequired)
+            //    {
+            //        Console.Default.WriteLine("Dynamic Linking");
+            //        BasicConsole.WriteLine("Dynamic Linking");
 
-                            FOS_System.String libFullPath = DynamicsStringTable[theDyn.Val_Ptr];
-                            Console.Default.WriteLine(libFullPath);
-                            BasicConsole.WriteLine(libFullPath);
+            //        ELFDynamicSection dynamicSection = theFile.DynamicSection;
+            //        ELFDynamicSymbolTableSection dynamicSymbolsSection = theFile.DynamicSymbolsSection;
 
-                            FOS_System.String libFileName = (FOS_System.String)libFullPath.Split('\\').Last();
-                            libFileName = (FOS_System.String)libFileName.Split('/').Last();
-                            FOS_System.String libTestPath = theFile.TheFile.Parent.GetFullPath() + libFileName;
-                            File sharedObjectFile = File.Open(libTestPath);
-                            if (sharedObjectFile == null)
-                            {
-                                Console.Default.WarningColour();
-                                Console.Default.WriteLine("Failed to find needed library file!");
-                                BasicConsole.WriteLine("Failed to find needed library file!");
-                                Console.Default.DefaultColour();
-                                OK = false;
-                            }
-                            else
-                            {
-                                Console.Default.WriteLine("Found library file. Loading library...");
-                                BasicConsole.WriteLine("Found library file. Loading library...");
+            //        ELFStringTable DynamicsStringTable = new ELFStringTable(
+            //            dynamicSection.StrTabDynamic.Val_Ptr, dynamicSection.StrTabSizeDynamic.Val_Ptr);
 
-                                ELFSharedObject sharedObject = DynamicLinkerLoader.LoadLibrary_FromELFSO(sharedObjectFile, this);
-                                SharedObjectDependencies.Add(sharedObject);
+            //        for (uint i = 0; i < dynamicSection.Dynamics.Count; i++)
+            //        {
+            //            ELFDynamicSection.Dynamic theDyn = dynamicSection[i];
 
-                                Console.Default.WriteLine("Library loaded.");
-                                BasicConsole.WriteLine("Library loaded.");
-                            }
-                        }
-                    }
+            //            //BasicConsole.WriteLine("     - Dynamic : ");
+            //            //BasicConsole.Write("         - Tag : ");
+            //            //BasicConsole.WriteLine((int)theDyn.Tag);
+            //            //BasicConsole.Write("         - Value or Pointer : ");
+            //            //BasicConsole.WriteLine(theDyn.Val_Ptr);
 
-                    Console.Default.WriteLine("Library Relocations");
-                    BasicConsole.WriteLine("Library Relocations");
+            //            if (theDyn.Tag == ELFDynamicSection.DynamicTag.Needed)
+            //            {
+            //                BasicConsole.Write("         - Needed library name : ");
 
-                    // Perform relocation / dynamic linking of all libraries
-                    for (int i = 0; i < SharedObjectDependencies.Count; i++)
-                    {
-                        ELFSharedObject SO = (ELFSharedObject)SharedObjectDependencies[i];
+            //                String libFullPath = DynamicsStringTable[theDyn.Val_Ptr];
+            //                Console.Default.WriteLine(libFullPath);
+            //                BasicConsole.WriteLine(libFullPath);
 
-                        //BasicConsole.WriteLine("Shared Object base address : " + (FOS_System.String)SO.BaseAddress);
-                        //BasicConsole.WriteLine("Shared Object file base address : " + (FOS_System.String)SO.TheFile.BaseAddress);
-                        
-                        List SOSections = SO.TheFile.Sections;
-                        for (int j = 0; j < SOSections.Count; j++)
-                        {
-                            ELFSection SOSection = (ELFSection)SOSections[j];
-                            if (SOSection is ELFRelocationTableSection)
-                            {
-                                //BasicConsole.WriteLine(" - Normal Relocation");
+            //                String libFileName = (String)libFullPath.Split('\\').Last();
+            //                libFileName = (String)libFileName.Split('/').Last();
+            //                String libTestPath = theFile.TheFile.Parent.GetFullPath() + libFileName;
+            //                File sharedObjectFile = File.Open(libTestPath);
+            //                if (sharedObjectFile == null)
+            //                {
+            //                    Console.Default.WarningColour();
+            //                    Console.Default.WriteLine("Failed to find needed library file!");
+            //                    BasicConsole.WriteLine("Failed to find needed library file!");
+            //                    Console.Default.DefaultColour();
+            //                    OK = false;
+            //                }
+            //                else
+            //                {
+            //                    Console.Default.WriteLine("Found library file. Loading library...");
+            //                    BasicConsole.WriteLine("Found library file. Loading library...");
 
-                                ELFRelocationTableSection relocTableSection = (ELFRelocationTableSection)SOSection;
-                                ELFSymbolTableSection symbolTable = (ELFSymbolTableSection)SO.TheFile.Sections[relocTableSection.SymbolTableSectionIndex];
-                                ELFStringTableSection symbolNamesTable = (ELFStringTableSection)SO.TheFile.Sections[symbolTable.StringsSectionIndex];
+            //                    ELFSharedObject sharedObject =
+            //                        DynamicLinkerLoader.LoadLibrary_FromELFSO(sharedObjectFile, this);
+            //                    SharedObjectDependencies.Add(sharedObject);
 
-                                List Relocations = relocTableSection.Relocations;
-                                for (int k = 0; k < Relocations.Count; k++)
-                                {
-                                    // Reference: http://docs.oracle.com/cd/E19683-01/817-3677/chapter6-26/index.html
+            //                    Console.Default.WriteLine("Library loaded.");
+            //                    BasicConsole.WriteLine("Library loaded.");
+            //                }
+            //            }
+            //        }
 
-                                    ELFRelocationTableSection.Relocation relocation = (ELFRelocationTableSection.Relocation)Relocations[k];
-                                    if (relocation.Type == ELFRelocationTableSection.RelocationType.R_386_NONE)
-                                    {
-                                        continue;
-                                    }
+            //        Console.Default.WriteLine("Library Relocations");
+            //        BasicConsole.WriteLine("Library Relocations");
 
-                                    uint* resolvedRelLocation = (uint*)(SO.BaseAddress + (relocation.Offset - SO.TheFile.BaseAddress));
-                                    ELFSymbolTableSection.Symbol symbol = (ELFSymbolTableSection.Symbol)symbolTable[relocation.Symbol];
-                                    FOS_System.String symbolName = symbolNamesTable[symbol.NameIdx];
+            //        // Perform relocation / dynamic linking of all libraries
+            //        for (int i = 0; i < SharedObjectDependencies.Count; i++)
+            //        {
+            //            ELFSharedObject SO = (ELFSharedObject)SharedObjectDependencies[i];
 
-                                    //BasicConsole.WriteLine("Relocation:");
-                                    ////BasicConsole.WriteLine("    > Symbol index : " + (FOS_System.String)relocation.Symbol);
-                                    //BasicConsole.WriteLine("    > Type : " + (FOS_System.String)(uint)relocation.Type);
-                                    //BasicConsole.WriteLine("    > Offset : " + (FOS_System.String)(uint)relocation.Offset);
-                                    //BasicConsole.WriteLine(((FOS_System.String)"    > Resolved location address: ") + (uint)resolvedRelLocation);
-                                    ////BasicConsole.WriteLine(((FOS_System.String)"    > Resolved location start value: ") + *resolvedRelLocation);
-                                    //BasicConsole.Write("    > Symbol name : ");
-                                    //BasicConsole.WriteLine(symbolName);
+            //            //BasicConsole.WriteLine("Shared Object base address : " + (Framework.String)SO.BaseAddress);
+            //            //BasicConsole.WriteLine("Shared Object file base address : " + (Framework.String)SO.TheFile.BaseAddress);
 
-                                    uint newValue = 0;
-                                    switch (relocation.Type)
-                                    {
-                                        case ELFRelocationTableSection.RelocationType.R_386_32:
-                                            newValue = GetSymbolAddress(symbol, symbolName) + *resolvedRelLocation;
-                                            break;
-                                        case ELFRelocationTableSection.RelocationType.R_386_PC32:
-                                            newValue = GetSymbolAddress(symbol, symbolName) + *resolvedRelLocation - (uint)resolvedRelLocation;
-                                            break;
-                                        case ELFRelocationTableSection.RelocationType.R_386_RELATIVE:
-                                            newValue = SO.BaseAddress + *resolvedRelLocation;
-                                            break;
-                                        //TODO: Support more relocation types
-                                        default:
-                                            Console.Default.WarningColour();
-                                            Console.Default.Write("WARNING: Unrecognised relocation type! (");
-                                            Console.Default.Write_AsDecimal((uint)relocation.Type);
-                                            Console.Default.WriteLine(")");
-                                            Console.Default.DefaultColour();
+            //            List SOSections = SO.TheFile.Sections;
+            //            for (int j = 0; j < SOSections.Count; j++)
+            //            {
+            //                ELFSection SOSection = (ELFSection)SOSections[j];
+            //                if (SOSection is ELFRelocationTableSection)
+            //                {
+            //                    //BasicConsole.WriteLine(" - Normal Relocation");
 
-                                            BasicConsole.Write("WARNING: Unrecognised relocation type! (");
-                                            BasicConsole.Write((uint)relocation.Type);
-                                            BasicConsole.WriteLine(")");
-                                            break;
-                                    }
+            //                    ELFRelocationTableSection relocTableSection = (ELFRelocationTableSection)SOSection;
+            //                    ELFSymbolTableSection symbolTable =
+            //                        (ELFSymbolTableSection)
+            //                            SO.TheFile.Sections[relocTableSection.SymbolTableSectionIndex];
+            //                    ELFStringTableSection symbolNamesTable =
+            //                        (ELFStringTableSection)SO.TheFile.Sections[symbolTable.StringsSectionIndex];
 
-                                    *resolvedRelLocation = newValue;
+            //                    List Relocations = relocTableSection.Relocations;
+            //                    for (int k = 0; k < Relocations.Count; k++)
+            //                    {
+            //                        // Reference: http://docs.oracle.com/cd/E19683-01/817-3677/chapter6-26/index.html
 
-                                    //BasicConsole.WriteLine("    > New value: " + (FOS_System.String)(newValue));
-                                    //BasicConsole.WriteLine("    > Resolved location end value: " + (FOS_System.String)(*resolvedRelLocation));
+            //                        ELFRelocationTableSection.Relocation relocation =
+            //                            (ELFRelocationTableSection.Relocation)Relocations[k];
+            //                        if (relocation.Type == ELFRelocationTableSection.RelocationType.R_386_NONE)
+            //                        {
+            //                            continue;
+            //                        }
 
-                                }
-                            }
-                            else if (SOSection is ELFRelocationAddendTableSection)
-                            {
-                                //BasicConsole.WriteLine(" - Addend Relocation");
+            //                        uint* resolvedRelLocation =
+            //                            (uint*)(SO.BaseAddress + (relocation.Offset - SO.TheFile.BaseAddress));
+            //                        ELFSymbolTableSection.Symbol symbol =
+            //                            symbolTable[relocation.Symbol];
+            //                        String symbolName = symbolNamesTable[symbol.NameIdx];
 
-                                ELFRelocationAddendTableSection relocTableSection = (ELFRelocationAddendTableSection)SOSection;
-                                ELFSymbolTableSection symbolTable = (ELFSymbolTableSection)SO.TheFile.Sections[relocTableSection.SymbolTableSectionIndex];
-                                ELFStringTableSection symbolNamesTable = (ELFStringTableSection)SO.TheFile.Sections[symbolTable.StringsSectionIndex];
-                                
-                                List Relocations = relocTableSection.Relocations;
-                                for (int k = 0; k < Relocations.Count; k++)
-                                {
-                                    ELFRelocationAddendTableSection.RelocationAddend relocation = (ELFRelocationAddendTableSection.RelocationAddend)Relocations[k];
-                                    if (relocation.Type == ELFRelocationTableSection.RelocationType.R_386_NONE)
-                                    {
-                                        continue;
-                                    }
+            //                        //BasicConsole.WriteLine("Relocation:");
+            //                        ////BasicConsole.WriteLine("    > Symbol index : " + (Framework.String)relocation.Symbol);
+            //                        //BasicConsole.WriteLine("    > Type : " + (Framework.String)(uint)relocation.Type);
+            //                        //BasicConsole.WriteLine("    > Offset : " + (Framework.String)(uint)relocation.Offset);
+            //                        //BasicConsole.WriteLine(((Framework.String)"    > Resolved location address: ") + (uint)resolvedRelLocation);
+            //                        ////BasicConsole.WriteLine(((Framework.String)"    > Resolved location start value: ") + *resolvedRelLocation);
+            //                        //BasicConsole.Write("    > Symbol name : ");
+            //                        //BasicConsole.WriteLine(symbolName);
 
-                                    ELFSymbolTableSection.Symbol symbol = (ELFSymbolTableSection.Symbol)symbolTable[relocation.Symbol];
-                                    FOS_System.String symbolName = symbolNamesTable[symbol.NameIdx];
-                                    uint* resolvedRelLocation = (uint*)(SO.BaseAddress + (relocation.Offset - SO.TheFile.BaseAddress));
+            //                        uint newValue = 0;
+            //                        switch (relocation.Type)
+            //                        {
+            //                            case ELFRelocationTableSection.RelocationType.R_386_32:
+            //                                newValue = GetSymbolAddress(symbol, symbolName) + *resolvedRelLocation;
+            //                                break;
+            //                            case ELFRelocationTableSection.RelocationType.R_386_PC32:
+            //                                newValue = GetSymbolAddress(symbol, symbolName) + *resolvedRelLocation -
+            //                                           (uint)resolvedRelLocation;
+            //                                break;
+            //                            case ELFRelocationTableSection.RelocationType.R_386_RELATIVE:
+            //                                newValue = SO.BaseAddress + *resolvedRelLocation;
+            //                                break;
+            //                            //TODO: Support more relocation types
+            //                            default:
+            //                                Console.Default.WarningColour();
+            //                                Console.Default.Write("WARNING: Unrecognised relocation type! (");
+            //                                Console.Default.Write_AsDecimal((uint)relocation.Type);
+            //                                Console.Default.WriteLine(")");
+            //                                Console.Default.DefaultColour();
 
-                                    //BasicConsole.WriteLine("Relocation:");
-                                    ////BasicConsole.WriteLine("    > Symbol index : " + (FOS_System.String)relocation.Symbol);
-                                    //BasicConsole.WriteLine("    > Type : " + (FOS_System.String)(uint)relocation.Type);
-                                    //BasicConsole.WriteLine("    > Offset : " + (FOS_System.String)(uint)relocation.Offset);
-                                    //BasicConsole.WriteLine(((FOS_System.String)"    > Resolved location address: ") + (uint)resolvedRelLocation);
-                                    ////BasicConsole.WriteLine(((FOS_System.String)"    > Resolved location start value: ") + *resolvedRelLocation);
-                                    //BasicConsole.Write("    > Symbol name : ");
-                                    //BasicConsole.WriteLine(symbolName);
-                                    
-                                    uint newValue = 0;
-                                    switch (relocation.Type)
-                                    {
-                                        //TODO: Support more relocation types
-                                        default:
-                                            Console.Default.WarningColour();
-                                            Console.Default.Write("WARNING: Unrecognised relocation type! (");
-                                            Console.Default.Write_AsDecimal((uint)relocation.Type);
-                                            Console.Default.WriteLine(")");
-                                            Console.Default.DefaultColour();
+            //                                BasicConsole.Write("WARNING: Unrecognised relocation type! (");
+            //                                BasicConsole.Write((uint)relocation.Type);
+            //                                BasicConsole.WriteLine(")");
+            //                                break;
+            //                        }
 
-                                            BasicConsole.Write("WARNING: Unrecognised relocation type! (");
-                                            BasicConsole.Write((uint)relocation.Type);
-                                            BasicConsole.WriteLine(")");
-                                            break;
-                                    }
+            //                        *resolvedRelLocation = newValue;
 
-                                    *resolvedRelLocation = newValue;
+            //                        //BasicConsole.WriteLine("    > New value: " + (Framework.String)(newValue));
+            //                        //BasicConsole.WriteLine("    > Resolved location end value: " + (Framework.String)(*resolvedRelLocation));
+            //                    }
+            //                }
+            //                else if (SOSection is ELFRelocationAddendTableSection)
+            //                {
+            //                    //BasicConsole.WriteLine(" - Addend Relocation");
 
-                                    //BasicConsole.WriteLine("    > New value: " + (FOS_System.String)(newValue));
-                                    //BasicConsole.WriteLine("    > Resolved location end value: " + (FOS_System.String)(*resolvedRelLocation));
+            //                    ELFRelocationAddendTableSection relocTableSection =
+            //                        (ELFRelocationAddendTableSection)SOSection;
+            //                    ELFSymbolTableSection symbolTable =
+            //                        (ELFSymbolTableSection)
+            //                            SO.TheFile.Sections[relocTableSection.SymbolTableSectionIndex];
+            //                    ELFStringTableSection symbolNamesTable =
+            //                        (ELFStringTableSection)SO.TheFile.Sections[symbolTable.StringsSectionIndex];
 
-                                }
-                            }
-                        }
-                    }
+            //                    List Relocations = relocTableSection.Relocations;
+            //                    for (int k = 0; k < Relocations.Count; k++)
+            //                    {
+            //                        ELFRelocationAddendTableSection.RelocationAddend relocation =
+            //                            (ELFRelocationAddendTableSection.RelocationAddend)Relocations[k];
+            //                        if (relocation.Type == ELFRelocationTableSection.RelocationType.R_386_NONE)
+            //                        {
+            //                            continue;
+            //                        }
 
-                    Console.Default.WriteLine("Executable Relocations");
-                    BasicConsole.WriteLine("Executable Relocations");
+            //                        ELFSymbolTableSection.Symbol symbol =
+            //                            symbolTable[relocation.Symbol];
+            //                        String symbolName = symbolNamesTable[symbol.NameIdx];
+            //                        uint* resolvedRelLocation =
+            //                            (uint*)(SO.BaseAddress + (relocation.Offset - SO.TheFile.BaseAddress));
 
-                    //BasicConsole.WriteLine("Executable base address : " + (FOS_System.String)BaseAddress);
-                    //BasicConsole.WriteLine("Executable file base address : " + (FOS_System.String)theFile.BaseAddress);
-                        
-                    // Perform dynamic linking of executable
-                    List ExeSections = theFile.Sections;
-                    for (int j = 0; j < ExeSections.Count; j++)
-                    {
-                        ELFSection ExeSection = (ELFSection)ExeSections[j];
-                        if (ExeSection is ELFRelocationTableSection)
-                        {
-                            //BasicConsole.WriteLine(" - Normal Relocations");
+            //                        //BasicConsole.WriteLine("Relocation:");
+            //                        ////BasicConsole.WriteLine("    > Symbol index : " + (Framework.String)relocation.Symbol);
+            //                        //BasicConsole.WriteLine("    > Type : " + (Framework.String)(uint)relocation.Type);
+            //                        //BasicConsole.WriteLine("    > Offset : " + (Framework.String)(uint)relocation.Offset);
+            //                        //BasicConsole.WriteLine(((Framework.String)"    > Resolved location address: ") + (uint)resolvedRelLocation);
+            //                        ////BasicConsole.WriteLine(((Framework.String)"    > Resolved location start value: ") + *resolvedRelLocation);
+            //                        //BasicConsole.Write("    > Symbol name : ");
+            //                        //BasicConsole.WriteLine(symbolName);
 
-                            ELFRelocationTableSection relocTableSection = (ELFRelocationTableSection)ExeSection;
-                            ELFSymbolTableSection symbolTable = (ELFSymbolTableSection)theFile.Sections[relocTableSection.SymbolTableSectionIndex];
-                            ELFStringTableSection symbolNamesTable = (ELFStringTableSection)theFile.Sections[symbolTable.StringsSectionIndex];
+            //                        uint newValue = 0;
+            //                        switch (relocation.Type)
+            //                        {
+            //                            //TODO: Support more relocation types
+            //                            default:
+            //                                Console.Default.WarningColour();
+            //                                Console.Default.Write("WARNING: Unrecognised relocation type! (");
+            //                                Console.Default.Write_AsDecimal((uint)relocation.Type);
+            //                                Console.Default.WriteLine(")");
+            //                                Console.Default.DefaultColour();
 
-                            List Relocations = relocTableSection.Relocations;
-                            for (int k = 0; k < Relocations.Count; k++)
-                            {
-                                ELFRelocationTableSection.Relocation relocation = (ELFRelocationTableSection.Relocation)Relocations[k];
-                                if (relocation.Type == ELFRelocationTableSection.RelocationType.R_386_NONE)
-                                {
-                                    continue;
-                                }
+            //                                BasicConsole.Write("WARNING: Unrecognised relocation type! (");
+            //                                BasicConsole.Write((uint)relocation.Type);
+            //                                BasicConsole.WriteLine(")");
+            //                                break;
+            //                        }
 
-                                uint* resolvedRelLocation = (uint*)(BaseAddress + (relocation.Offset - theFile.BaseAddress));
-                                ELFSymbolTableSection.Symbol symbol = (ELFSymbolTableSection.Symbol)symbolTable[relocation.Symbol];
-                                FOS_System.String symbolName = symbolNamesTable[symbol.NameIdx];
-                                
-                                //BasicConsole.WriteLine("Relocation:");
-                                ////BasicConsole.WriteLine("    > Symbol index : " + (FOS_System.String)relocation.Symbol);
-                                //BasicConsole.WriteLine("    > Type : " + (FOS_System.String)(uint)relocation.Type);
-                                //BasicConsole.WriteLine("    > Offset : " + (FOS_System.String)(uint)relocation.Offset);
-                                //BasicConsole.WriteLine(((FOS_System.String)"    > Resolved location address: ") + (uint)resolvedRelLocation);
-                                ////BasicConsole.WriteLine(((FOS_System.String)"    > Resolved location start value: ") + *resolvedRelLocation);
-                                //BasicConsole.Write("    > Symbol name : ");
-                                //BasicConsole.WriteLine(symbolName);
-                                    
-                                bool setFromNewValue = true;
-                                uint newValue = 0;
-                                switch (relocation.Type)
-                                {
-                                    //TODO: Support more relocation types
-                                    case ELFRelocationTableSection.RelocationType.R_386_JMP_SLOT:
-                                        newValue = GetSymbolAddress(symbol, symbolName);
-                                        break;
-                                    case ELFRelocationTableSection.RelocationType.R_386_COPY:
-                                        // Created by the link-editor for dynamic executables to preserve a read-only text segment. 
-                                        // Its offset member refers to a location in a writable segment. The symbol table index 
-                                        // specifies a symbol that should exist both in the current object file and in a shared object. 
-                                        // During execution, the runtime linker copies data associated with the shared object's symbol 
-                                        // to the location specified by the offset.
-                                        // See Copy Relocations:
-                                        //      http://docs.oracle.com/cd/E19683-01/817-3677/6mj8mbtbs/index.html#chapter4-84604
+            //                        *resolvedRelLocation = newValue;
 
-                                        setFromNewValue = false;
-                                        uint symbolAddress = 0;
-                                        uint symbolSize = 0;
+            //                        //BasicConsole.WriteLine("    > New value: " + (Framework.String)(newValue));
+            //                        //BasicConsole.WriteLine("    > Resolved location end value: " + (Framework.String)(*resolvedRelLocation));
+            //                    }
+            //                }
+            //            }
+            //        }
 
-                                        if (GetSymbolAddressAndSize(symbol, symbolName, ref symbolAddress, ref symbolSize))
-                                        {
-                                            byte* symbolValuePtr = (byte*)symbolAddress;
+            //        Console.Default.WriteLine("Executable Relocations");
+            //        BasicConsole.WriteLine("Executable Relocations");
 
-                                            //BasicConsole.Write("    > Symbol size : ");
-                                            //BasicConsole.WriteLine(symbolSize);
+            //        //BasicConsole.WriteLine("Executable base address : " + (Framework.String)BaseAddress);
+            //        //BasicConsole.WriteLine("Executable file base address : " + (Framework.String)theFile.BaseAddress);
 
-                                            for (int i = 0; i < symbolSize; i++)
-                                            {
-                                                resolvedRelLocation[i] = symbolValuePtr[i];
-                                            }
-                                        }
-                                        else
-                                        {
-                                            BasicConsole.WriteLine("Failed to get symbol address and size for R_386_COPY relocation!");
-                                        }
-                                        break;
-                                    default:
-                                        Console.Default.WarningColour();
-                                        Console.Default.Write("WARNING: Unrecognised relocation type! (");
-                                        Console.Default.Write_AsDecimal((uint)relocation.Type);
-                                        Console.Default.WriteLine(")");
-                                        Console.Default.DefaultColour();
+            //        // Perform dynamic linking of executable
+            //        List ExeSections = theFile.Sections;
+            //        for (int j = 0; j < ExeSections.Count; j++)
+            //        {
+            //            ELFSection ExeSection = (ELFSection)ExeSections[j];
+            //            if (ExeSection is ELFRelocationTableSection)
+            //            {
+            //                //BasicConsole.WriteLine(" - Normal Relocations");
 
-                                        BasicConsole.Write("WARNING: Unrecognised relocation type! (");
-                                        BasicConsole.Write((uint)relocation.Type);
-                                        BasicConsole.WriteLine(")");
-                                        break;
-                                }
-                                if (setFromNewValue)
-                                {
-                                    *resolvedRelLocation = newValue;
-                                    //BasicConsole.WriteLine("    > New value: " + (FOS_System.String)(newValue));
-                                    //BasicConsole.WriteLine("    > Resolved location end value: " + (FOS_System.String)(*resolvedRelLocation));
-                                }
-                            }
-                        }
-                        else if (ExeSection is ELFRelocationAddendTableSection)
-                        {
-                            //BasicConsole.WriteLine(" - Addend Relocations");
+            //                ELFRelocationTableSection relocTableSection = (ELFRelocationTableSection)ExeSection;
+            //                ELFSymbolTableSection symbolTable =
+            //                    (ELFSymbolTableSection)theFile.Sections[relocTableSection.SymbolTableSectionIndex];
+            //                ELFStringTableSection symbolNamesTable =
+            //                    (ELFStringTableSection)theFile.Sections[symbolTable.StringsSectionIndex];
 
-                            ELFRelocationAddendTableSection relocTableSection = (ELFRelocationAddendTableSection)ExeSection;
-                            ELFSymbolTableSection symbolTable = (ELFSymbolTableSection)theFile.Sections[relocTableSection.SymbolTableSectionIndex];
-                            ELFStringTableSection symbolNamesTable = (ELFStringTableSection)theFile.Sections[symbolTable.StringsSectionIndex];
-                            
-                            List Relocations = relocTableSection.Relocations;
-                            for (int k = 0; k < Relocations.Count; k++)
-                            {
-                                ELFRelocationAddendTableSection.RelocationAddend relocation = (ELFRelocationAddendTableSection.RelocationAddend)Relocations[k];
-                                if (relocation.Type == ELFRelocationTableSection.RelocationType.R_386_NONE)
-                                {
-                                    continue;
-                                }
+            //                List Relocations = relocTableSection.Relocations;
+            //                for (int k = 0; k < Relocations.Count; k++)
+            //                {
+            //                    ELFRelocationTableSection.Relocation relocation =
+            //                        (ELFRelocationTableSection.Relocation)Relocations[k];
+            //                    if (relocation.Type == ELFRelocationTableSection.RelocationType.R_386_NONE)
+            //                    {
+            //                        continue;
+            //                    }
 
-                                uint* resolvedRelLocation = (uint*)(BaseAddress + (relocation.Offset - theFile.BaseAddress));
-                                ELFSymbolTableSection.Symbol symbol = (ELFSymbolTableSection.Symbol)symbolTable[relocation.Symbol];
-                                FOS_System.String symbolName = symbolNamesTable[symbol.NameIdx];
-                                
-                                //BasicConsole.WriteLine("Relocation:");
-                                ////BasicConsole.WriteLine("    > Symbol index : " + (FOS_System.String)relocation.Symbol);
-                                //BasicConsole.WriteLine("    > Type : " + (FOS_System.String)(uint)relocation.Type);
-                                //BasicConsole.WriteLine("    > Offset : " + (FOS_System.String)(uint)relocation.Offset);
-                                //BasicConsole.WriteLine(((FOS_System.String)"    > Resolved location address: ") + (uint)resolvedRelLocation);
-                                ////BasicConsole.WriteLine(((FOS_System.String)"    > Resolved location start value: ") + *resolvedRelLocation);
-                                //BasicConsole.Write("    > Symbol name : ");
-                                //BasicConsole.WriteLine(symbolName);
-                                    
-                                uint newValue = 0;
-                                switch (relocation.Type)
-                                {
-                                    //TODO: Support more relocation types
-                                    default:
-                                        Console.Default.WarningColour();
-                                        Console.Default.Write("WARNING: Unrecognised relocation type! (");
-                                        Console.Default.Write_AsDecimal((uint)relocation.Type);
-                                        Console.Default.WriteLine(")");
-                                        Console.Default.DefaultColour();
+            //                    uint* resolvedRelLocation =
+            //                        (uint*)(BaseAddress + (relocation.Offset - theFile.BaseAddress));
+            //                    ELFSymbolTableSection.Symbol symbol =
+            //                        symbolTable[relocation.Symbol];
+            //                    String symbolName = symbolNamesTable[symbol.NameIdx];
 
-                                        BasicConsole.Write("WARNING: Unrecognised relocation type! (");
-                                        BasicConsole.Write((uint)relocation.Type);
-                                        BasicConsole.WriteLine(")");
-                                        break;
-                                }
-                                *resolvedRelLocation = newValue;
-                                //BasicConsole.WriteLine("    > New value: " + (FOS_System.String)(newValue));
-                                //BasicConsole.WriteLine("    > Resolved location end value: " + (FOS_System.String)(*resolvedRelLocation));
-                            }
-                        }
-                    }
+            //                    //BasicConsole.WriteLine("Relocation:");
+            //                    ////BasicConsole.WriteLine("    > Symbol index : " + (Framework.String)relocation.Symbol);
+            //                    //BasicConsole.WriteLine("    > Type : " + (Framework.String)(uint)relocation.Type);
+            //                    //BasicConsole.WriteLine("    > Offset : " + (Framework.String)(uint)relocation.Offset);
+            //                    //BasicConsole.WriteLine(((Framework.String)"    > Resolved location address: ") + (uint)resolvedRelLocation);
+            //                    ////BasicConsole.WriteLine(((Framework.String)"    > Resolved location start value: ") + *resolvedRelLocation);
+            //                    //BasicConsole.Write("    > Symbol name : ");
+            //                    //BasicConsole.WriteLine(symbolName);
 
-                    // TODO: Call Init functions of libraries
-                }
+            //                    bool setFromNewValue = true;
+            //                    uint newValue = 0;
+            //                    switch (relocation.Type)
+            //                    {
+            //                        //TODO: Support more relocation types
+            //                        case ELFRelocationTableSection.RelocationType.R_386_JMP_SLOT:
+            //                            newValue = GetSymbolAddress(symbol, symbolName);
+            //                            break;
+            //                        case ELFRelocationTableSection.RelocationType.R_386_COPY:
+            //                            // Created by the link-editor for dynamic executables to preserve a read-only text segment. 
+            //                            // Its offset member refers to a location in a writable segment. The symbol table index 
+            //                            // specifies a symbol that should exist both in the current object file and in a shared object. 
+            //                            // During execution, the runtime linker copies data associated with the shared object's symbol 
+            //                            // to the location specified by the offset.
+            //                            // See Copy Relocations:
+            //                            //      http://docs.oracle.com/cd/E19683-01/817-3677/6mj8mbtbs/index.html#chapter4-84604
 
-                // Unmap processes' memory from current processes' memory
-                for (int i = 0; i < SharedObjectDependencies.Count; i++)
-                {
-                    ELFSharedObject SO = (ELFSharedObject)SharedObjectDependencies[i];
-                    uint FileBaseAddress = SO.TheFile.BaseAddress;
-                    uint MemBaseAddress = SO.BaseAddress;
+            //                            setFromNewValue = false;
+            //                            uint symbolAddress = 0;
+            //                            uint symbolSize = 0;
 
-                    List SOSegments = SO.TheFile.Segments;
-                    for (int j = 0; j < SOSegments.Count; j++)
-                    {
-                        ELFSegment SOSegment = (ELFSegment)SOSegments[j];
-                        ProcessManager.CurrentProcess.TheMemoryLayout.RemovePage(
-                            (MemBaseAddress + ((uint)SOSegment.Header.VAddr - FileBaseAddress)) & 0xFFFFF000);
-                    }
-                }
-                {
-                    uint FileBaseAddress = theFile.BaseAddress;
-                    uint MemBaseAddress = BaseAddress;
+            //                            if (GetSymbolAddressAndSize(symbol, symbolName, ref symbolAddress,
+            //                                ref symbolSize))
+            //                            {
+            //                                byte* symbolValuePtr = (byte*)symbolAddress;
 
-                    List ExeSegments = theFile.Segments;
-                    for (int j = 0; j < ExeSegments.Count; j++)
-                    {
-                        ELFSegment ExeSegment = (ELFSegment)ExeSegments[j];
-                        ProcessManager.CurrentProcess.TheMemoryLayout.RemovePage(
-                            (MemBaseAddress + ((uint)ExeSegment.Header.VAddr - FileBaseAddress)) & 0xFFFFF000);
-                    }
-                }
+            //                                //BasicConsole.Write("    > Symbol size : ");
+            //                                //BasicConsole.WriteLine(symbolSize);
 
-                #endregion
+            //                                for (int i = 0; i < symbolSize; i++)
+            //                                {
+            //                                    resolvedRelLocation[i] = symbolValuePtr[i];
+            //                                }
+            //                            }
+            //                            else
+            //                            {
+            //                                BasicConsole.WriteLine(
+            //                                    "Failed to get symbol address and size for R_386_COPY relocation!");
+            //                            }
+            //                            break;
+            //                        default:
+            //                            Console.Default.WarningColour();
+            //                            Console.Default.Write("WARNING: Unrecognised relocation type! (");
+            //                            Console.Default.Write_AsDecimal((uint)relocation.Type);
+            //                            Console.Default.WriteLine(")");
+            //                            Console.Default.DefaultColour();
 
-                ProcessManager.CurrentProcess.TheMemoryLayout.RemovePage(threadStackVirtAddr);
+            //                            BasicConsole.Write("WARNING: Unrecognised relocation type! (");
+            //                            BasicConsole.Write((uint)relocation.Type);
+            //                            BasicConsole.WriteLine(")");
+            //                            break;
+            //                    }
+            //                    if (setFromNewValue)
+            //                    {
+            //                        *resolvedRelLocation = newValue;
+            //                        //BasicConsole.WriteLine("    > New value: " + (Framework.String)(newValue));
+            //                        //BasicConsole.WriteLine("    > Resolved location end value: " + (Framework.String)(*resolvedRelLocation));
+            //                    }
+            //                }
+            //            }
+            //            else if (ExeSection is ELFRelocationAddendTableSection)
+            //            {
+            //                //BasicConsole.WriteLine(" - Addend Relocations");
 
-            }
-            finally
-            {
-                if (!OK)
-                {
-                    theProcess = null;
-                }
-            }
+            //                ELFRelocationAddendTableSection relocTableSection =
+            //                    (ELFRelocationAddendTableSection)ExeSection;
+            //                ELFSymbolTableSection symbolTable =
+            //                    (ELFSymbolTableSection)theFile.Sections[relocTableSection.SymbolTableSectionIndex];
+            //                ELFStringTableSection symbolNamesTable =
+            //                    (ELFStringTableSection)theFile.Sections[symbolTable.StringsSectionIndex];
+
+            //                List Relocations = relocTableSection.Relocations;
+            //                for (int k = 0; k < Relocations.Count; k++)
+            //                {
+            //                    ELFRelocationAddendTableSection.RelocationAddend relocation =
+            //                        (ELFRelocationAddendTableSection.RelocationAddend)Relocations[k];
+            //                    if (relocation.Type == ELFRelocationTableSection.RelocationType.R_386_NONE)
+            //                    {
+            //                        continue;
+            //                    }
+
+            //                    uint* resolvedRelLocation =
+            //                        (uint*)(BaseAddress + (relocation.Offset - theFile.BaseAddress));
+            //                    ELFSymbolTableSection.Symbol symbol =
+            //                        symbolTable[relocation.Symbol];
+            //                    String symbolName = symbolNamesTable[symbol.NameIdx];
+
+            //                    //BasicConsole.WriteLine("Relocation:");
+            //                    ////BasicConsole.WriteLine("    > Symbol index : " + (Framework.String)relocation.Symbol);
+            //                    //BasicConsole.WriteLine("    > Type : " + (Framework.String)(uint)relocation.Type);
+            //                    //BasicConsole.WriteLine("    > Offset : " + (Framework.String)(uint)relocation.Offset);
+            //                    //BasicConsole.WriteLine(((Framework.String)"    > Resolved location address: ") + (uint)resolvedRelLocation);
+            //                    ////BasicConsole.WriteLine(((Framework.String)"    > Resolved location start value: ") + *resolvedRelLocation);
+            //                    //BasicConsole.Write("    > Symbol name : ");
+            //                    //BasicConsole.WriteLine(symbolName);
+
+            //                    uint newValue = 0;
+            //                    switch (relocation.Type)
+            //                    {
+            //                        //TODO: Support more relocation types
+            //                        default:
+            //                            Console.Default.WarningColour();
+            //                            Console.Default.Write("WARNING: Unrecognised relocation type! (");
+            //                            Console.Default.Write_AsDecimal((uint)relocation.Type);
+            //                            Console.Default.WriteLine(")");
+            //                            Console.Default.DefaultColour();
+
+            //                            BasicConsole.Write("WARNING: Unrecognised relocation type! (");
+            //                            BasicConsole.Write((uint)relocation.Type);
+            //                            BasicConsole.WriteLine(")");
+            //                            break;
+            //                    }
+            //                    *resolvedRelLocation = newValue;
+            //                    //BasicConsole.WriteLine("    > New value: " + (Framework.String)(newValue));
+            //                    //BasicConsole.WriteLine("    > Resolved location end value: " + (Framework.String)(*resolvedRelLocation));
+            //                }
+            //            }
+            //        }
+
+            //        // TODO: Call Init functions of libraries
+            //    }
+
+            //    // Unmap processes' memory from current processes' memory
+            //    for (int i = 0; i < SharedObjectDependencies.Count; i++)
+            //    {
+            //        ELFSharedObject SO = (ELFSharedObject)SharedObjectDependencies[i];
+            //        uint FileBaseAddress = SO.TheFile.BaseAddress;
+            //        uint MemBaseAddress = SO.BaseAddress;
+
+            //        List SOSegments = SO.TheFile.Segments;
+            //        for (int j = 0; j < SOSegments.Count; j++)
+            //        {
+            //            ELFSegment SOSegment = (ELFSegment)SOSegments[j];
+            //            ProcessManager.CurrentProcess.TheMemoryLayout.RemovePage(
+            //                (MemBaseAddress + ((uint)SOSegment.Header.VAddr - FileBaseAddress)) & 0xFFFFF000);
+            //        }
+            //    }
+            //    {
+            //        uint FileBaseAddress = theFile.BaseAddress;
+            //        uint MemBaseAddress = BaseAddress;
+
+            //        List ExeSegments = theFile.Segments;
+            //        for (int j = 0; j < ExeSegments.Count; j++)
+            //        {
+            //            ELFSegment ExeSegment = (ELFSegment)ExeSegments[j];
+            //            ProcessManager.CurrentProcess.TheMemoryLayout.RemovePage(
+            //                (MemBaseAddress + ((uint)ExeSegment.Header.VAddr - FileBaseAddress)) & 0xFFFFF000);
+            //        }
+            //    }
+
+            //    #endregion
+
+            //    ProcessManager.CurrentProcess.TheMemoryLayout.RemovePage(threadStackVirtAddr);
+            //}
+            //finally
+            //{
+            //    if (!OK)
+            //    {
+            //        theProcess = null;
+            //    }
+            //}
         }
 
-        public void LoadSegments(ELFFile fileToLoadFrom, ref bool OK, ref bool DynamicLinkingRequired, uint memBaseAddress)
+        public void LoadSegments(ELFFile fileToLoadFrom, ref bool OK, ref bool DynamicLinkingRequired,
+            uint memBaseAddress)
         {
             uint fileBaseAddress = fileToLoadFrom.BaseAddress;
             List Segments = fileToLoadFrom.Segments;
-            
+
             for (int i = 0; i < Segments.Count; i++)
             {
                 ELFSegment segment = (ELFSegment)Segments[i];
@@ -500,10 +527,11 @@ namespace Kernel.Processes.ELF
                     if (bytesRead != segment.Header.FileSize)
                     {
                         OK = false;
-                        ExceptionMethods.Throw(new FOS_System.Exception("Error loading ELF segments! Failed to load correct segment bytes from file."));
+                        ExceptionMethods.Throw(
+                            new Exception("Error loading ELF segments! Failed to load correct segment bytes from file."));
                     }
 
-                    byte* destMemPtr = (segment.Header.VAddr - fileBaseAddress) + memBaseAddress;
+                    byte* destMemPtr = segment.Header.VAddr - fileBaseAddress + memBaseAddress;
                     byte* pageAlignedDestMemPtr = (byte*)((uint)destMemPtr & 0xFFFFF000);
 
                     Console.Default.Write(" Loading segment from ");
@@ -524,40 +552,41 @@ namespace Kernel.Processes.ELF
 
                     for (uint pageOffset = 0; pageOffset < segment.Header.MemSize; pageOffset += 4096)
                     {
-                        uint physPageAddr = Hardware.VirtMemManager.FindFreePhysPage();
-                        uint virtPageAddr = (uint)pageAlignedDestMemPtr + pageOffset;
+                        //uint physPageAddr = Hardware.VirtMemManager.FindFreePhysPage();
+                        //uint virtPageAddr = (uint)pageAlignedDestMemPtr + pageOffset;
 
-                        Hardware.VirtMemManager.Map(
-                            physPageAddr,
-                            virtPageAddr,
-                            4096,
-                            theProcess.UserMode ? Hardware.VirtMem.VirtMemImpl.PageFlags.None : Hardware.VirtMem.VirtMemImpl.PageFlags.KernelOnly);
-                        ProcessManager.CurrentProcess.TheMemoryLayout.AddDataPage(physPageAddr, virtPageAddr);
+                        //TODO: Need to update this to use system calls
+                        //Hardware.VirtMemManager.Map(
+                        //    physPageAddr,
+                        //    virtPageAddr,
+                        //    4096,
+                        //    theProcess.UserMode ? Hardware.VirtMem.VirtMemImpl.PageFlags.None : Hardware.VirtMem.VirtMemImpl.PageFlags.KernelOnly);
+                        //Hardware.Processes.ProcessManager.CurrentProcess.TheMemoryLayout.AddDataPage(physPageAddr, virtPageAddr);
 
-                        if (executable)
-                        {
-                            theProcess.TheMemoryLayout.AddCodePage(physPageAddr, virtPageAddr);
-                        }
-                        else
-                        {
-                            theProcess.TheMemoryLayout.AddDataPage(physPageAddr, virtPageAddr);
-                        }
+                        //if (executable)
+                        //{
+                        //    theProcess.TheMemoryLayout.AddCodePage(physPageAddr, virtPageAddr);
+                        //}
+                        //else
+                        //{
+                        //    theProcess.TheMemoryLayout.AddDataPage(physPageAddr, virtPageAddr);
+                        //}
 
-                        uint copySize = FOS_System.Math.Min((uint)bytesRead, 4096 - copyOffset);
-                        if (copySize > 0)
-                        {
-                            Utilities.MemoryUtils.MemCpy_32(
-                                (byte*)(virtPageAddr + copyOffset),
-                                ((byte*)Utilities.ObjectUtilities.GetHandle(segment.Data)) + FOS_System.Array.FieldsBytesSize + pageOffset - copyFromOffset,
-                                copySize);
+                        //uint copySize = Framework.Math.Min((uint)bytesRead, 4096 - copyOffset);
+                        //if (copySize > 0)
+                        //{
+                        //    Utilities.MemoryUtils.MemCpy_32(
+                        //        (byte*)(virtPageAddr + copyOffset),
+                        //        ((byte*)Utilities.ObjectUtilities.GetHandle(segment.Data)) + Framework.Array.FieldsBytesSize + pageOffset - copyFromOffset,
+                        //        copySize);
 
-                            bytesRead -= (int)copySize;
-                        }
+                        //    bytesRead -= (int)copySize;
+                        //}
 
-                        for (uint j = copySize + copyOffset; j < 4096; j++)
-                        {
-                            *(byte*)(virtPageAddr + j) = 0;
-                        }
+                        //for (uint j = copySize + copyOffset; j < 4096; j++)
+                        //{
+                        //    *(byte*)(virtPageAddr + j) = 0;
+                        //}
 
                         if (copyOffset > 0)
                         {
@@ -569,14 +598,16 @@ namespace Kernel.Processes.ELF
             }
         }
 
-        public uint GetSymbolAddress(ELFDynamicSymbolTableSection.Symbol theSymbol, FOS_System.String theSymbolName)
+        public uint GetSymbolAddress(ELFSymbolTableSection.Symbol theSymbol, String theSymbolName)
         {
             uint address = 0;
             uint size = 0;
             GetSymbolAddressAndSize(theSymbol, theSymbolName, ref address, ref size);
             return address;
         }
-        public bool GetSymbolAddressAndSize(ELFDynamicSymbolTableSection.Symbol theSymbol, FOS_System.String theSymbolName, ref uint address, ref uint size)
+
+        public bool GetSymbolAddressAndSize(ELFSymbolTableSection.Symbol theSymbol, String theSymbolName,
+            ref uint address, ref uint size)
         {
             //BasicConsole.WriteLine("Searching for symbol...");
             //BasicConsole.Write("     - Name : ");
@@ -589,7 +620,8 @@ namespace Kernel.Processes.ELF
                 if (aSection is ELFSymbolTableSection)
                 {
                     ELFSymbolTableSection symTabSection = (ELFSymbolTableSection)aSection;
-                    ELFStringTableSection strTabSection = (ELFStringTableSection)theFile.Sections[symTabSection.StringsSectionIndex];
+                    ELFStringTableSection strTabSection =
+                        (ELFStringTableSection)theFile.Sections[symTabSection.StringsSectionIndex];
 
                     for (int j = 0; j < symTabSection.Symbols.Count; j++)
                     {
@@ -603,7 +635,7 @@ namespace Kernel.Processes.ELF
                             {
                                 //BasicConsole.WriteLine("     Found symbol.");
                                 //BasicConsole.Write("     aSymbol Address : ");
-                                uint result = ((uint)aSymbol.Value - theFile.BaseAddress) + BaseAddress;
+                                uint result = (uint)aSymbol.Value - theFile.BaseAddress + BaseAddress;
                                 //BasicConsole.WriteLine(result);
 
                                 address = result;
@@ -625,10 +657,12 @@ namespace Kernel.Processes.ELF
                     if (aSection is ELFSymbolTableSection)
                     {
                         ELFSymbolTableSection symTabSection = (ELFSymbolTableSection)aSection;
-                        ELFStringTableSection strTabSection = (ELFStringTableSection)SO.TheFile.Sections[symTabSection.StringsSectionIndex];
+                        ELFStringTableSection strTabSection =
+                            (ELFStringTableSection)SO.TheFile.Sections[symTabSection.StringsSectionIndex];
                         for (int j = 0; j < symTabSection.Symbols.Count; j++)
                         {
-                            ELFSymbolTableSection.Symbol aSymbol = (ELFSymbolTableSection.Symbol)symTabSection.Symbols[j];
+                            ELFSymbolTableSection.Symbol aSymbol =
+                                (ELFSymbolTableSection.Symbol)symTabSection.Symbols[j];
                             if (aSymbol.Type == theSymbol.Type &&
                                 aSymbol.Binding == ELFSymbolTableSection.SymbolBinding.Global &&
                                 aSymbol.SectionIndex > 0)
@@ -637,7 +671,7 @@ namespace Kernel.Processes.ELF
                                 {
                                     //BasicConsole.WriteLine("     Found symbol.");
                                     //BasicConsole.Write("     aSymbol Address : ");
-                                    uint result = ((uint)aSymbol.Value - SO.TheFile.BaseAddress) + SO.BaseAddress;
+                                    uint result = (uint)aSymbol.Value - SO.TheFile.BaseAddress + SO.BaseAddress;
                                     //BasicConsole.WriteLine(result);
 
                                     address = result;

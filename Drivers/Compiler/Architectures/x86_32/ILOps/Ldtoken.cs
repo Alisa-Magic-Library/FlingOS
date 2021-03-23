@@ -1,4 +1,5 @@
 ﻿#region LICENSE
+
 // ---------------------------------- LICENSE ---------------------------------- //
 //
 //    Fling OS - The educational operating system
@@ -22,19 +23,17 @@
 //		For paper mail address, please contact via email for details.
 //
 // ------------------------------------------------------------------------------ //
+
 #endregion
-    
+
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Drivers.Compiler.Architectures.x86.ASMOps;
 using Drivers.Compiler.IL;
 
 namespace Drivers.Compiler.Architectures.x86
 {
     /// <summary>
-    /// See base class documentation.
+    ///     See base class documentation.
     /// </summary>
     public class Ldtoken : IL.ILOps.Ldtoken
     {
@@ -42,7 +41,7 @@ namespace Drivers.Compiler.Architectures.x86
         {
             try
             {
-                conversionState.CurrentStackFrame.Stack.Push(new StackItem()
+                conversionState.CurrentStackFrame.GetStack(theOp).Push(new StackItem
                 {
                     isFloat = false,
                     sizeOnStackInBytes = 4,
@@ -52,18 +51,19 @@ namespace Drivers.Compiler.Architectures.x86
             }
             catch
             {
-                throw new NotSupportedException("The metadata token specifies a fieldref or methodref which isn't supported yet!");
+                throw new NotSupportedException(
+                    "The metadata token specifies a fieldref or methodref which isn't supported yet!");
             }
         }
 
         /// <summary>
-        /// See base class documentation.
+        ///     See base class documentation.
         /// </summary>
         /// <param name="theOp">See base class documentation.</param>
         /// <param name="conversionState">See base class documentation.</param>
         /// <returns>See base class documentation.</returns>
         /// <exception cref="System.NotSupportedException">
-        /// Thrown when the metadata token is not for method metadata.
+        ///     Thrown when the metadata token is not for method metadata.
         /// </exception>
         public override void Convert(ILConversionState conversionState, ILOp theOp)
         {
@@ -74,16 +74,12 @@ namespace Drivers.Compiler.Architectures.x86
             try
             {
                 Type theType = conversionState.Input.TheMethodInfo.UnderlyingInfo.Module.ResolveType(metadataToken);
-                if (theType == null)
-                {
-                    throw new NullReferenceException();
-                }
                 string typeTableId = conversionState.TheILLibrary.GetTypeInfo(theType).ID;
                 conversionState.AddExternalLabel(typeTableId);
 
-                conversionState.Append(new ASMOps.Push() { Size = ASMOps.OperandSize.Dword, Src = typeTableId });
-                
-                conversionState.CurrentStackFrame.Stack.Push(new StackItem()
+                conversionState.Append(new Push {Size = OperandSize.Dword, Src = typeTableId});
+
+                conversionState.CurrentStackFrame.GetStack(theOp).Push(new StackItem
                 {
                     isFloat = false,
                     sizeOnStackInBytes = 4,
@@ -93,7 +89,8 @@ namespace Drivers.Compiler.Architectures.x86
             }
             catch
             {
-                throw new NotSupportedException("The metadata token specifies a fieldref or methodref which isn't supported yet!");
+                throw new NotSupportedException(
+                    "The metadata token specifies a fieldref or methodref which isn't supported yet!");
             }
         }
     }

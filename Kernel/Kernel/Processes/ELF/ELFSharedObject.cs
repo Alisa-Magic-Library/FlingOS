@@ -1,4 +1,5 @@
 ﻿#region LICENSE
+
 // ---------------------------------- LICENSE ---------------------------------- //
 //
 //    Fling OS - The educational operating system
@@ -22,38 +23,29 @@
 //		For paper mail address, please contact via email for details.
 //
 // ------------------------------------------------------------------------------ //
+
 #endregion
-    
-using System;
-using Kernel.FOS_System;
-using Kernel.FOS_System.IO;
-using Kernel.FOS_System.IO.Streams;
-using Kernel.FOS_System.Collections;
-using Kernel.Hardware.Processes;
+
+using Kernel.Framework;
 
 namespace Kernel.Processes.ELF
 {
-    public class ELFSharedObject : FOS_System.Object
+    public class ELFSharedObject : Object
     {
-        protected ELFFile theFile = null;
-        public ELFFile TheFile
-        {
-            get
-            {
-                return theFile;
-            }
-        }
+        public uint BaseAddress = 0;
+        protected ELFFile theFile;
 
         protected ELFProcess theProcess;
-        public ELFProcess TheProcess
+
+        public ELFFile TheFile
         {
-            get
-            {
-                return theProcess;
-            }
+            get { return theFile; }
         }
 
-        public uint BaseAddress = 0;
+        public ELFProcess TheProcess
+        {
+            get { return theProcess; }
+        }
 
         public ELFSharedObject(ELFFile anELFFile, ELFProcess aProcess)
         {
@@ -69,8 +61,8 @@ namespace Kernel.Processes.ELF
             //          SharedObjectDependencyFilePaths.Add(sharedObjectFile.GetFullPath());
             //
             // - Read in segments / map in memory
-            
-            FOS_System.String fullFilePath = theFile.TheFile.GetFullPath();
+
+            String fullFilePath = theFile.TheFile.GetFullPath();
             if (theProcess.SharedObjectDependencyFilePaths.IndexOf(fullFilePath) > -1)
             {
                 return;
@@ -82,8 +74,9 @@ namespace Kernel.Processes.ELF
             bool DynamicLinkingRequired = false;
 
             // Load the ELF segments (i.e. the library code and data)
-            BaseAddress = Hardware.VirtMemManager.FindFreeVirtPage();
-            theProcess.LoadSegments(theFile, ref OK, ref DynamicLinkingRequired, BaseAddress);
+            //TODO: Use system calls
+            //BaseAddress = Hardware.VirtMemManager.FindFreeVirtPage();
+            //theProcess.LoadSegments(theFile, ref OK, ref DynamicLinkingRequired, BaseAddress);
         }
     }
 }

@@ -1,4 +1,5 @@
 ﻿#region LICENSE
+
 // ---------------------------------- LICENSE ---------------------------------- //
 //
 //    Fling OS - The educational operating system
@@ -22,27 +23,23 @@
 //		For paper mail address, please contact via email for details.
 //
 // ------------------------------------------------------------------------------ //
+
 #endregion
-    
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+
+using Drivers.Compiler.ASM;
 
 namespace Drivers.Compiler.Architectures.MIPS32.ASMOps
 {
-    public class Branch : ASM.ASMOp
+    public class Branch : ASMOp
     {
-        public string Src1;
-        public string Src2;
-
         public BranchOp BranchType;
-        public bool UnsignedTest;
         public int DestILPosition;
         public string Extension;
-        
-        public override string Convert(ASM.ASMBlock theBlock)
+        public string Src1;
+        public string Src2;
+        public bool UnsignedTest;
+
+        public override string Convert(ASMBlock TheBlock)
         {
             string jmpOp = "";
             int numSourceOperands = 2;
@@ -108,22 +105,20 @@ namespace Drivers.Compiler.Architectures.MIPS32.ASMOps
                     break;
             }
 
-            string label = theBlock.GenerateMethodLabel() + theBlock.GenerateILOpLabel(DestILPosition, Extension);
+            string label = TheBlock.GenerateMethodLabel() + TheBlock.GenerateILOpLabel(DestILPosition, Extension);
 
             if (numSourceOperands == 2)
             {
                 return jmpOp + " " + Src1 + ", " + Src2 + ", " + label + "\nnop";
             }
-            else if (numSourceOperands == 1)
+            if (numSourceOperands == 1)
             {
                 return jmpOp + " " + Src1 + ", " + label + "\nnop";
             }
-            else
-            {
-                return jmpOp + " " + label + "\nnop";
-            }
+            return jmpOp + " " + label + "\nnop";
         }
     }
+
     public enum BranchOp
     {
         None,

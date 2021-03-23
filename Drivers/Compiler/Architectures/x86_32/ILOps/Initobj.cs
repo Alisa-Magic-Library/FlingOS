@@ -1,4 +1,5 @@
 ﻿#region LICENSE
+
 // ---------------------------------- LICENSE ---------------------------------- //
 //
 //    Fling OS - The educational operating system
@@ -22,29 +23,25 @@
 //		For paper mail address, please contact via email for details.
 //
 // ------------------------------------------------------------------------------ //
+
 #endregion
-    
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+
 using Drivers.Compiler.IL;
 
 namespace Drivers.Compiler.Architectures.x86
 {
     /// <summary>
-    /// See base class documentation.
+    ///     See base class documentation.
     /// </summary>
     public class Initobj : IL.ILOps.Initobj
     {
         public override void PerformStackOperations(ILPreprocessState conversionState, ILOp theOp)
         {
-            conversionState.CurrentStackFrame.Stack.Pop();
+            conversionState.CurrentStackFrame.GetStack(theOp).Pop();
         }
 
         /// <summary>
-        /// See base class documentation.
+        ///     See base class documentation.
         /// </summary>
         /// <param name="theOp">See base class documentation.</param>
         /// <param name="conversionState">See base class documentation.</param>
@@ -53,7 +50,7 @@ namespace Drivers.Compiler.Architectures.x86
         {
             //Ignore for now
             //TODO: Initialise the structure to 0
-            conversionState.Append(new ASMOps.Add() { Src = "4", Dest = "ESP" });
+            conversionState.Append(new ASMOps.Add {Src = "4", Dest = "ESP"});
         }
     }
 }

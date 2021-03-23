@@ -1,4 +1,5 @@
 ﻿#region LICENSE
+
 // ---------------------------------- LICENSE ---------------------------------- //
 //
 //    Fling OS - The educational operating system
@@ -22,36 +23,46 @@
 //		For paper mail address, please contact via email for details.
 //
 // ------------------------------------------------------------------------------ //
+
 #endregion
-    
-using System;
-using Kernel.FOS_System;
-using Kernel.FOS_System.IO;
-using Kernel.FOS_System.IO.Streams;
-using Kernel.FOS_System.Collections;
+
+using Kernel.FileSystems;
+using Kernel.FileSystems.Streams;
+using Kernel.Framework;
+using Kernel.Framework.Collections;
+using Kernel.Framework.Stubs;
 
 namespace Kernel.Processes.ELF
 {
-    public unsafe class ELFFile : FOS_System.Object
+    //TODO: Well, this class is now wrong because it doesn't use file system calls
+
+    public unsafe class ELFFile : Object
     {
-        private File theFile;
-        private FileStream theStream;
-        public File TheFile
-        {
-            get
-            {
-                return theFile;
-            }
-        }
-        public FileStream TheStream
-        {
-            get
-            {
-                return theStream;
-            }
-        }
+        private readonly File theFile;
+        private readonly FileStream theStream;
+        private uint baseAddress;
+
+        public ELFDynamicSection DynamicSection;
+        public ELFDynamicSymbolTableSection DynamicSymbolsSection;
+
+        private bool FoundBaseAddress;
 
         private ELFHeader header;
+        public ELFStringTableSection NamesTable;
+
+        public List Sections = new List();
+        public List Segments = new List();
+
+        public File TheFile
+        {
+            get { return theFile; }
+        }
+
+        public FileStream TheStream
+        {
+            get { return theStream; }
+        }
+
         public ELFHeader Header
         {
             get
@@ -64,15 +75,6 @@ namespace Kernel.Processes.ELF
             }
         }
 
-        public List Sections = new List();
-        public List Segments = new List();
-        public ELFStringTableSection NamesTable;
-
-        public ELFDynamicSection DynamicSection;
-        public ELFDynamicSymbolTableSection DynamicSymbolsSection;
-
-        private bool FoundBaseAddress = false;
-        private uint baseAddress;
         public uint BaseAddress
         {
             get
@@ -81,7 +83,7 @@ namespace Kernel.Processes.ELF
                 {
                     FoundBaseAddress = true;
 
-                    baseAddress = FOS_System.Stubs.UInt32.MaxValue;
+                    baseAddress = UInt32.MaxValue;
                     for (int i = 0; i < Segments.Count; i++)
                     {
                         ELFSegment segment = (ELFSegment)Segments[i];
@@ -119,15 +121,18 @@ namespace Kernel.Processes.ELF
                 Console.Default.WriteLine(".");
                 BasicConsole.WriteLine(".");
                 Console.Default.DefaultColour();
-                ExceptionMethods.Throw(new FOS_System.Exception("Error loading ELF file! Supplied file is null."));
+                ExceptionMethods.Throw(new Exception("Error loading ELF file! Supplied file is null."));
             }
-            theStream = new CachedFileStream(theFile.GetStream());
-            ReadHeader();
-            
-            if (IsValidFile())
+            else
             {
-                ReadSectionHeaders();
-                ReadSegmentHeaders();
+                theStream = new CachedFileStream(theFile.GetStream());
+                ReadHeader();
+
+                if (IsValidFile())
+                {
+                    ReadSectionHeaders();
+                    ReadSegmentHeaders();
+                }
             }
         }
 
@@ -143,12 +148,13 @@ namespace Kernel.Processes.ELF
             }
             else
             {
-                ExceptionMethods.Throw(new FOS_System.Exception("Failed to read header data from file!"));
+                ExceptionMethods.Throw(new Exception("Failed to read header data from file!"));
             }
         }
+
         public void ReadSectionHeaders()
         {
-            byte[] sectionsData = new byte[header.SecHeaderEntrySize * header.SecHeaderNumEntries];
+            byte[] sectionsData = new byte[header.SecHeaderEntrySize*header.SecHeaderNumEntries];
             theStream.Position = header.SecHeaderTableOffset;
             int bytesRead = theStream.Read(sectionsData, 0, sectionsData.Length);
 
@@ -164,7 +170,8 @@ namespace Kernel.Processes.ELF
                     {
                         if (!(newSection is ELFStringTableSection))
                         {
-                            ExceptionMethods.Throw(new FOS_System.Exception("Expected Strings Table section was not a strings table section!"));
+                            ExceptionMethods.Throw(
+                                new Exception("Expected Strings Table section was not a strings table section!"));
                         }
                         NamesTable = (ELFStringTableSection)newSection;
                     }
@@ -229,8 +236,8 @@ namespace Kernel.Processes.ELF
                 //            BasicConsole.WriteLine(theSym.SectionIndex);
                 //            BasicConsole.Write("         - Value : ");
                 //            BasicConsole.WriteLine((uint)theSym.Value);
-                //            BasicConsole.Write("         - Size : ");
-                //            BasicConsole.WriteLine(theSym.Size);
+                //            BasicConsole.Write("         - Blocks : ");
+                //            BasicConsole.WriteLine(theSym.Blocks);
                 //        }
 
                 //        #endregion
@@ -329,20 +336,20 @@ namespace Kernel.Processes.ELF
                 //        #endregion
                 //    }
 
-                //    Hardware.Processes.Thread.Sleep(500);
-                //      TODO: Use system call not direct call
+                //    Kernel.Processes.SystemCalls.SleepThread(500);
                 //}
 
                 #endregion
             }
             else
             {
-                ExceptionMethods.Throw(new FOS_System.Exception("Failed to read sections table data from file!"));
+                ExceptionMethods.Throw(new Exception("Failed to read sections table data from file!"));
             }
         }
+
         public void ReadSegmentHeaders()
         {
-            byte[] segmentsData = new byte[header.ProgHeaderEntrySize * header.ProgHeaderNumEntries];
+            byte[] segmentsData = new byte[header.ProgHeaderEntrySize*header.ProgHeaderNumEntries];
             theStream.Position = header.ProgHeaderTableOffset;
             int bytesRead = theStream.Read(segmentsData, 0, segmentsData.Length);
 
@@ -353,7 +360,7 @@ namespace Kernel.Processes.ELF
                 {
                     ELFSegmentHeader newHeader = new ELFSegmentHeader(segmentsData, ref offset);
                     ELFSegment newSegment = ELFSegment.GetSegment(newHeader);
-                    
+
                     newSegment.Read(theStream);
 
                     Segments.Add(newSegment);
@@ -385,21 +392,21 @@ namespace Kernel.Processes.ELF
                 //    BasicConsole.Write(" - Alignment : ");
                 //    BasicConsole.WriteLine(theHeader.Align);
 
-                //    Hardware.Processes.Thread.Sleep(500);
-                //      TODO: Use system call not direct call
+                //    Kernel.Processes.SystemCalls.SleepThread(500);
                 //}
 
                 #endregion
             }
             else
             {
-                ExceptionMethods.Throw(new FOS_System.Exception("Failed to read segments table data from file!"));
+                ExceptionMethods.Throw(new Exception("Failed to read segments table data from file!"));
             }
         }
 
         public bool IsValidFile()
         {
             #region CHECK : Signature
+
             if (!CheckSiganture())
             {
                 Console.Default.WarningColour();
@@ -409,16 +416,16 @@ namespace Kernel.Processes.ELF
                 BasicConsole.WriteLine("ELF signature check failed!");
                 return false;
             }
-            else
-            {
-                Console.Default.Colour(0x2F);
-                Console.Default.WriteLine("ELF signature check passed.");
-                Console.Default.DefaultColour();
+            Console.Default.Colour(0x2F);
+            Console.Default.WriteLine("ELF signature check passed.");
+            Console.Default.DefaultColour();
 
-                BasicConsole.WriteLine("ELF signature check passed.");
-            }
+            BasicConsole.WriteLine("ELF signature check passed.");
+
             #endregion
+
             #region CHECK : File Class
+
             if (!CheckFileClass())
             {
                 Console.Default.WarningColour();
@@ -428,16 +435,16 @@ namespace Kernel.Processes.ELF
                 BasicConsole.WriteLine("ELF file class check failed!");
                 return false;
             }
-            else
-            {
-                Console.Default.Colour(0x2F);
-                Console.Default.WriteLine("ELF file class check passed.");
-                Console.Default.DefaultColour();
+            Console.Default.Colour(0x2F);
+            Console.Default.WriteLine("ELF file class check passed.");
+            Console.Default.DefaultColour();
 
-                BasicConsole.WriteLine("ELF file class check passed.");
-            }
+            BasicConsole.WriteLine("ELF file class check passed.");
+
             #endregion
+
             #region CHECK : Data Encoding
+
             if (!CheckDataEncoding())
             {
                 Console.Default.WarningColour();
@@ -447,16 +454,16 @@ namespace Kernel.Processes.ELF
                 BasicConsole.WriteLine("ELF data encoding check failed!");
                 return false;
             }
-            else
-            {
-                Console.Default.Colour(0x2F);
-                Console.Default.WriteLine("ELF data encoding check passed.");
-                Console.Default.DefaultColour();
+            Console.Default.Colour(0x2F);
+            Console.Default.WriteLine("ELF data encoding check passed.");
+            Console.Default.DefaultColour();
 
-                BasicConsole.WriteLine("ELF data encoding check passed.");
-            }
+            BasicConsole.WriteLine("ELF data encoding check passed.");
+
             #endregion
+
             #region CHECK : File Type
+
             if (!CheckFileType())
             {
                 Console.Default.WarningColour();
@@ -466,16 +473,16 @@ namespace Kernel.Processes.ELF
                 BasicConsole.WriteLine("ELF file type check failed!");
                 return false;
             }
-            else
-            {
-                Console.Default.Colour(0x2F);
-                Console.Default.WriteLine("ELF file type check passed.");
-                Console.Default.DefaultColour();
+            Console.Default.Colour(0x2F);
+            Console.Default.WriteLine("ELF file type check passed.");
+            Console.Default.DefaultColour();
 
-                BasicConsole.WriteLine("ELF file type check passed.");
-            }
+            BasicConsole.WriteLine("ELF file type check passed.");
+
             #endregion
+
             #region CHECK : Machine
+
             if (!CheckMachine())
             {
                 Console.Default.WarningColour();
@@ -485,89 +492,80 @@ namespace Kernel.Processes.ELF
                 BasicConsole.WriteLine("ELF machine check failed!");
                 return false;
             }
-            else
-            {
-                Console.Default.Colour(0x2F);
-                Console.Default.WriteLine("ELF machine check passed.");
-                Console.Default.DefaultColour();
+            Console.Default.Colour(0x2F);
+            Console.Default.WriteLine("ELF machine check passed.");
+            Console.Default.DefaultColour();
 
-                BasicConsole.WriteLine("ELF machine check passed.");
-            }
+            BasicConsole.WriteLine("ELF machine check passed.");
+
             #endregion
+
             #region INFO : Header Version
+
             Console.Default.Write("ELF Header version: ");
             Console.Default.WriteLine_AsDecimal(Header.HeaderVersion);
 
             BasicConsole.Write("ELF Header version: ");
             BasicConsole.WriteLine(Header.HeaderVersion);
+
             #endregion
 
             return true;
         }
+
         public bool CheckSiganture()
         {
             if (header != null)
             {
                 return header.SignatureOK;
             }
-            else
-            {
-                ExceptionMethods.Throw(new FOS_System.Exception("Failed to load ELF header so cannot check signature!"));
-            }
+            ExceptionMethods.Throw(new Exception("Failed to load ELF header so cannot check signature!"));
             return false;
         }
+
         public bool CheckFileClass()
         {
             if (header != null)
             {
                 ELFFileClass fileClass = header.FileClass;
-                //TODO - Support 64-bit executables
+                //TODO: Support 64-bit executables
                 return fileClass == ELFFileClass.None || fileClass == ELFFileClass.Class32;
             }
-            else
-            {
-                ExceptionMethods.Throw(new FOS_System.Exception("Failed to load ELF header so cannot check file class!"));
-            }
+            ExceptionMethods.Throw(new Exception("Failed to load ELF header so cannot check file class!"));
             return false;
         }
+
         public bool CheckDataEncoding()
         {
             if (header != null)
             {
                 return header.DataEncoding == ELFDataEncoding.LSB;
             }
-            else
-            {
-                ExceptionMethods.Throw(new FOS_System.Exception("Failed to load ELF header so cannot check data encoding!"));
-            }
+            ExceptionMethods.Throw(new Exception("Failed to load ELF header so cannot check data encoding!"));
             return false;
         }
+
         public bool CheckFileType()
         {
             if (header != null)
             {
                 ELFFileType fileType = header.FileType;
-                return fileType == ELFFileType.None || 
+                return fileType == ELFFileType.None ||
                        fileType == ELFFileType.Executable ||
-                       fileType == ELFFileType.Relocatable || 
+                       fileType == ELFFileType.Relocatable ||
                        fileType == ELFFileType.Shared;
             }
-            else
-            {
-                ExceptionMethods.Throw(new FOS_System.Exception("Failed to load ELF header so cannot check file class!"));
-            }
+            ExceptionMethods.Throw(new Exception("Failed to load ELF header so cannot check file class!"));
             return false;
         }
+
         public bool CheckMachine()
         {
             if (header != null)
             {
                 return header.Machine == ELFMachines.Intel80386;
             }
-            else
-            {
-                ExceptionMethods.Throw(new FOS_System.Exception("Failed to load ELF header so cannot check file class!"));
-            }
+            ExceptionMethods.Throw(new Exception("Failed to load ELF header so cannot check file class!"));
             return false;
         }
 
@@ -577,22 +575,17 @@ namespace Kernel.Processes.ELF
             {
                 return header.FileType == ELFFileType.Executable;
             }
-            else
-            {
-                ExceptionMethods.Throw(new FOS_System.Exception("Failed to load ELF header so cannot check file class!"));
-            }
+            ExceptionMethods.Throw(new Exception("Failed to load ELF header so cannot check file class!"));
             return false;
         }
+
         public bool IsSharedObject()
         {
             if (header != null)
             {
                 return header.FileType == ELFFileType.Shared;
             }
-            else
-            {
-                ExceptionMethods.Throw(new FOS_System.Exception("Failed to load ELF header so cannot check file class!"));
-            }
+            ExceptionMethods.Throw(new Exception("Failed to load ELF header so cannot check file class!"));
             return false;
         }
 
@@ -600,18 +593,19 @@ namespace Kernel.Processes.ELF
         {
             if (!IsExecutable())
             {
-                ExceptionMethods.Throw(new FOS_System.Exception("Attempted to load non-executable ELF as executable!"));
+                ExceptionMethods.Throw(new Exception("Attempted to load non-executable ELF as executable!"));
             }
 
             ELFProcess process = new ELFProcess(this);
             process.Load(UserMode);
             return process;
         }
+
         public ELFSharedObject LoadSharedObject(ELFProcess theProcess)
         {
             if (!IsSharedObject())
             {
-                ExceptionMethods.Throw(new FOS_System.Exception("Attempted to load non-shared ELF as shared object!"));
+                ExceptionMethods.Throw(new Exception("Attempted to load non-shared ELF as shared object!"));
             }
 
             ELFSharedObject sharedObject = new ELFSharedObject(this, theProcess);

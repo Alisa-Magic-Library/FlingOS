@@ -1,4 +1,5 @@
 ﻿#region LICENSE
+
 // ---------------------------------- LICENSE ---------------------------------- //
 //
 //    Fling OS - The educational operating system
@@ -22,18 +23,19 @@
 //		For paper mail address, please contact via email for details.
 //
 // ------------------------------------------------------------------------------ //
+
 #endregion
-    
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Drivers.Compiler.ASM.ASMOps
 {
     [ASMOpTarget(Target = OpCodes.Header)]
     public abstract class ASMHeader : ASMOp
     {
+        protected string Section;
+
+        public ASMHeader(string aSection)
+        {
+            Section = aSection;
+        }
     }
 }

@@ -1,4 +1,5 @@
 ﻿#region LICENSE
+
 // ---------------------------------- LICENSE ---------------------------------- //
 //
 //    Fling OS - The educational operating system
@@ -22,36 +23,38 @@
 //		For paper mail address, please contact via email for details.
 //
 // ------------------------------------------------------------------------------ //
+
 #endregion
-    
+
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
-using System.IO;
+using Drivers.Compiler.ASM;
+using Drivers.Compiler.IL;
 
 namespace Drivers.Compiler.Architectures.x86
 {
     public class LibraryFunctions : TargetArchitectureFunctions
     {
-        public override void CleanUpAssemblyCode(ASM.ASMBlock TheBlock, ref string ASMText)
+        public override void CleanUpAssemblyCode(ASMBlock TheBlock, ref string ASMText)
         {
             // Create lists of extern and global labels
             TheBlock.ExternalLabels.Clear();
             List<string> ExternLines = ASMText.Replace("\r", "")
-                                              .Split('\n')
-                                              .Where(x => x.ToLower().Contains("extern "))
-                                              .Select(x => x.Split(' ')[1].Split(':')[0])
-                                              .ToList();
+                .Split('\n')
+                .Where(x => x.ToLower().Contains("extern "))
+                .Select(x => x.Split(' ')[1].Split(':')[0])
+                .ToList();
             TheBlock.ExternalLabels.AddRange(ExternLines);
 
             TheBlock.GlobalLabels.Clear();
             List<string> GlobalLines = ASMText.Replace("\r", "")
-                                              .Split('\n')
-                                              .Where(x => x.ToLower().Contains("global "))
-                                              .Select(x => x.Split(' ')[1].Split(':')[0])
-                                              .ToList();
+                .Split('\n')
+                .Where(x => x.ToLower().Contains("global "))
+                .Select(x => x.Split(' ')[1].Split(':')[0])
+                .ToList();
             TheBlock.GlobalLabels.AddRange(GlobalLines);
 
             ASMText = ASMText.Replace("GLOBAL ", "global ");
@@ -59,14 +62,15 @@ namespace Drivers.Compiler.Architectures.x86
         }
 
         /// <summary>
-        /// Executes NASM on the output file. It is assumed the output file now exists.
+        ///     Executes NASM on the output file. It is assumed the output file now exists.
         /// </summary>
         /// <param name="inputFilePath">Path to the ASM file to process.</param>
         /// <param name="outputFilePath">Path to output the object file to.</param>
         /// <param name="OnComplete">Handler to call once NASM has completed. Default: null.</param>
         /// <param name="state">The state object to use when calling the OnComplete handler. Default: null.</param>
         /// <returns>True if execution completed successfully. Otherwise false.</returns>
-        public override bool ExecuteAssemblyCodeCompiler(string inputFilePath, string outputFilePath, VoidDelegate OnComplete = null, object state = null)
+        public override bool ExecuteAssemblyCodeCompiler(string inputFilePath, string outputFilePath,
+            VoidDelegate OnComplete = null, object state = null)
         {
             bool OK = true;
 
@@ -82,31 +86,32 @@ namespace Drivers.Compiler.Architectures.x86
                 throw new NullReferenceException("ASM file does not exist! Path: \"" + inputFilePath + "\"");
             }
 
-            string inputCommand = String.Format("-g -f {0} -o \"{1}\" -D{3}_COMPILATION \"{2}\"",
-                                                  "elf",
-                                                  outputFilePath,
-                                                  inputFilePath,
-                                                  "ELF");
+            string inputCommand = string.Format("-g -f {0} -o \"{1}\" -D{3}_COMPILATION \"{2}\"",
+                "elf",
+                outputFilePath,
+                inputFilePath,
+                "ELF");
 
             //Logger.LogMessage(inputFilePath, 0, inputCommand);
 
             OK = Utilities.ExecuteProcess(Path.GetDirectoryName(outputFilePath), NasmPath, inputCommand, "NASM",
-                                                  false,
-                                                  null,
-                                                  OnComplete,
-                                                  state);
+                false,
+                null,
+                OnComplete,
+                state);
 
             return OK;
         }
 
-        public override bool LinkISO(IL.ILLibrary TheLibrary, LinkInformation LinkInfo)
+        public override bool LinkISO(ILLibrary TheLibrary, LinkInformation LinkInfo)
         {
             bool OK = true;
 
             StreamWriter ASMWriter = new StreamWriter(LinkInfo.ASMPath, false);
 
             StringBuilder CommandLineArgsBuilder = new StringBuilder();
-            CommandLineArgsBuilder.Append("--fatal-warnings -T \"" + LinkInfo.LinkScriptPath + "\" -o \"" + LinkInfo.BinPath + "\"");
+            CommandLineArgsBuilder.Append("--fatal-warnings -T \"" + LinkInfo.LinkScriptPath + "\" -o \"" +
+                                          LinkInfo.BinPath + "\"");
 
             StringBuilder LinkScript = new StringBuilder();
             LinkScript.Append(@"ENTRY(Kernel_Start)
@@ -126,37 +131,74 @@ SECTIONS {
       physical address space. */
    . = 0x" + Options.BaseAddress.ToString("X8") + @";
 
-   .text : AT(ADDR(.text) - " + Options.LoadOffset.ToString() + @") {
+   Kernel_MemStart = .;
+
+   .text : AT(ADDR(.text) - " + Options.LoadOffset + @") {
 ");
 
             for (int i = 0; i < LinkInfo.SequencedASMBlocks.Count; i++)
             {
-                LinkScript.AppendLine(string.Format("       \"{0}\" (.text);", LinkInfo.SequencedASMBlocks[i].ObjectOutputFilePath));
+                if (LinkInfo.SequencedASMBlocks[i].PageAlign)
+                {
+                    LinkScript.AppendLine(". = ALIGN(0x1000);");
+                    LinkScript.AppendLine(LinkInfo.SequencedASMBlocks[i].PageAlignLabel + "_Code = .;");
+                }
+                LinkScript.AppendLine(string.Format("       \"{0}\" (.text);",
+                    LinkInfo.SequencedASMBlocks[i].ObjectOutputFilePath));
                 ASMWriter.WriteLine(File.ReadAllText(LinkInfo.SequencedASMBlocks[i].ASMOutputFilePath));
             }
-
-
             LinkScript.AppendLine(@"
           * (.text);
           * (.rodata*);
    }
 
    . = ALIGN(0x1000);
-   .data : AT(ADDR(.data) - " + Options.LoadOffset.ToString() + @") {
-          * (.data*);
+    data_start = .;
+   .data : AT(ADDR(.data) - " + Options.LoadOffset + @") {
+");
+
+            for (int i = 0; i < LinkInfo.SequencedASMBlocks.Count; i++)
+            {
+                if (LinkInfo.SequencedASMBlocks[i].PageAlign)
+                {
+                    LinkScript.AppendLine(". = ALIGN(0x1000);");
+                    LinkScript.AppendLine(LinkInfo.SequencedASMBlocks[i].PageAlignLabel + "_Data = .;");
+                }
+                LinkScript.AppendLine(string.Format("       \"{0}\" (.data);",
+                    LinkInfo.SequencedASMBlocks[i].ObjectOutputFilePath));
+            }
+            LinkScript.AppendLine(@"
    }
+    data_end = .;
 
    . = ALIGN(0x1000);
-   .bss : AT(ADDR(.bss) - " + Options.LoadOffset.ToString() + @") {
-          * (.bss*);
+    __bss_start = .;
+   .bss : AT(ADDR(.bss) - " + Options.LoadOffset + @") {
+");
+
+            for (int i = 0; i < LinkInfo.SequencedASMBlocks.Count; i++)
+            {
+                if (LinkInfo.SequencedASMBlocks[i].PageAlign)
+                {
+                    LinkScript.AppendLine(". = ALIGN(0x1000);");
+                    LinkScript.AppendLine(LinkInfo.SequencedASMBlocks[i].PageAlignLabel + "_BSS = .;");
+                }
+                LinkScript.AppendLine(string.Format("       \"{0}\" (.bss);",
+                    LinkInfo.SequencedASMBlocks[i].ObjectOutputFilePath));
+            }
+            LinkScript.AppendLine(@"
    }
+   __bss_end = .;
+
+   Kernel_MemEnd = .;
 }
 ");
 
             ASMWriter.Close();
 
             File.WriteAllText(LinkInfo.LinkScriptPath, LinkScript.ToString());
-            OK = Utilities.ExecuteProcess(LinkInfo.LdWorkingDir, Path.Combine(LinkInfo.ToolsPath, @"Cygwin\ld.exe"), CommandLineArgsBuilder.ToString(), "Ld");
+            OK = Utilities.ExecuteProcess(LinkInfo.LdWorkingDir, Path.Combine(LinkInfo.ToolsPath, @"Cygwin\ld.exe"),
+                CommandLineArgsBuilder.ToString(), "Ld");
 
             if (OK)
             {
@@ -166,7 +208,8 @@ SECTIONS {
                 }
 
                 OK = Utilities.ExecuteProcess(Options.OutputPath, LinkInfo.ISOGenPath,
-                    string.Format("4 \"{0}\" \"{1}\" true \"{2}\"", LinkInfo.ISOPath, LinkInfo.ISOLinuxPath, LinkInfo.ISODirPath), "ISO9660Generator");
+                    string.Format("4 \"{0}\" \"{1}\" true \"{2}\"", LinkInfo.ISOPath, LinkInfo.ISOLinuxPath,
+                        LinkInfo.ISODirPath), "ISO9660Generator");
 
                 if (OK)
                 {
@@ -175,26 +218,30 @@ SECTIONS {
                         File.Delete(LinkInfo.MapPath);
                     }
 
-                    OK = Utilities.ExecuteProcess(Options.OutputPath, Path.Combine(LinkInfo.ToolsPath, @"Cygwin\objdump.exe"), string.Format("--wide --syms \"{0}\"", LinkInfo.BinPath), "ObjDump", false, LinkInfo.MapPath);
+                    OK = Utilities.ExecuteProcess(Options.OutputPath,
+                        Path.Combine(LinkInfo.ToolsPath, @"Cygwin\objdump.exe"),
+                        string.Format("--wide --syms \"{0}\"", LinkInfo.BinPath), "ObjDump", false, LinkInfo.MapPath);
                 }
             }
 
             return OK;
         }
-        public override bool LinkELF(IL.ILLibrary TheLibrary, LinkInformation LinkInfo)
+
+        public override bool LinkELF(ILLibrary TheLibrary, LinkInformation LinkInfo)
         {
             StringBuilder CommandLineArgsBuilder = new StringBuilder();
             if (!LinkInfo.ExecutableOutput)
             {
                 CommandLineArgsBuilder.Append("-shared ");
             }
-            CommandLineArgsBuilder.Append("-L .\\Output -T \"" + LinkInfo.LinkScriptPath + "\" -o \"" + LinkInfo.BinPath + "\"");
+            CommandLineArgsBuilder.Append("-L .\\Output -T \"" + LinkInfo.LinkScriptPath + "\" -o \"" + LinkInfo.BinPath +
+                                          "\"");
 
             StreamWriter ASMWriter = new StreamWriter(LinkInfo.ASMPath, false);
 
             StringBuilder LinkScript = new StringBuilder();
             LinkScript.Append((LinkInfo.ExecutableOutput ? "ENTRY(" + LinkInfo.EntryPoint + ")\r\n" : "") +
-@"GROUP(");
+                              @"GROUP(");
 
             LinkScript.Append(string.Join(" ", LinkInfo.SequencedASMBlocks
                 .Where(x => File.Exists(x.ObjectOutputFilePath))
@@ -213,14 +260,20 @@ SECTIONS {
             LinkScript.AppendLine(@"
 
 SECTIONS {
-   . = 0x" + (0x40000000 + (LinkInfo.depLibNames.Count * 0x1000)).ToString("X2") + @";
+   . = 0x" + (0x40000000 + LinkInfo.depLibNames.Count*0x1000).ToString("X2") + @";
 
    .text : {
 ");
 
             for (int i = 0; i < LinkInfo.SequencedASMBlocks.Count; i++)
             {
-                LinkScript.AppendLine(string.Format("       \"{0}\" (.text);", LinkInfo.SequencedASMBlocks[i].ObjectOutputFilePath));
+                if (LinkInfo.SequencedASMBlocks[i].PageAlign)
+                {
+                    LinkScript.AppendLine(". = ALIGN(0x1000);");
+                    LinkScript.AppendLine(LinkInfo.SequencedASMBlocks[i].PageAlignLabel + "_Code = .;");
+                }
+                LinkScript.AppendLine(string.Format("       \"{0}\" (.text);",
+                    LinkInfo.SequencedASMBlocks[i].ObjectOutputFilePath));
                 ASMWriter.WriteLine(File.ReadAllText(LinkInfo.SequencedASMBlocks[i].ASMOutputFilePath));
             }
 
@@ -231,21 +284,48 @@ SECTIONS {
    }
 
    . = ALIGN(0x1000);
-   .data : AT(ADDR(.data)) {
-          * (.data*);
+   .data : {
+");
+
+            for (int i = 0; i < LinkInfo.SequencedASMBlocks.Count; i++)
+            {
+                if (LinkInfo.SequencedASMBlocks[i].PageAlign)
+                {
+                    LinkScript.AppendLine(". = ALIGN(0x1000);");
+                    LinkScript.AppendLine(LinkInfo.SequencedASMBlocks[i].PageAlignLabel + "_Data = .;");
+                }
+                LinkScript.AppendLine(string.Format("       \"{0}\" (.data);",
+                    LinkInfo.SequencedASMBlocks[i].ObjectOutputFilePath));
+            }
+            LinkScript.AppendLine(@"
    }
 
    . = ALIGN(0x1000);
-   .bss : AT(ADDR(.bss)) {
-          * (.bss*);
+   __bss_start = .;
+   .bss : {
+");
+
+            for (int i = 0; i < LinkInfo.SequencedASMBlocks.Count; i++)
+            {
+                if (LinkInfo.SequencedASMBlocks[i].PageAlign)
+                {
+                    LinkScript.AppendLine(". = ALIGN(0x1000);");
+                    LinkScript.AppendLine(LinkInfo.SequencedASMBlocks[i].PageAlignLabel + "_BSS = .;");
+                }
+                LinkScript.AppendLine(string.Format("       \"{0}\" (.bss);",
+                    LinkInfo.SequencedASMBlocks[i].ObjectOutputFilePath));
+            }
+            LinkScript.AppendLine(@"
    }
+   __bss_end = .;
 }
 ");
             ASMWriter.Close();
 
             File.WriteAllText(LinkInfo.LinkScriptCmdPath, CommandLineArgsBuilder.ToString());
             File.WriteAllText(LinkInfo.LinkScriptPath, LinkScript.ToString());
-            return Utilities.ExecuteProcess(LinkInfo.LdWorkingDir, Path.Combine(LinkInfo.ToolsPath, @"Cygwin\ld.exe"), CommandLineArgsBuilder.ToString(), "Ld");
+            return Utilities.ExecuteProcess(LinkInfo.LdWorkingDir, Path.Combine(LinkInfo.ToolsPath, @"Cygwin\ld.exe"),
+                CommandLineArgsBuilder.ToString(), "Ld");
         }
     }
 }

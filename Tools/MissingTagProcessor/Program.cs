@@ -1,4 +1,5 @@
 ﻿#region LICENSE
+
 // ---------------------------------- LICENSE ---------------------------------- //
 //
 //    Fling OS - The educational operating system
@@ -22,20 +23,18 @@
 //		For paper mail address, please contact via email for details.
 //
 // ------------------------------------------------------------------------------ //
+
 #endregion
-    
+
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.IO;
 
 namespace MissingTagProcessor
 {
-    class Program
+    internal class Program
     {
-        static void Main(string[] args)
+        private static void Main(string[] args)
         {
             if (args.Length < 1)
             {
@@ -43,7 +42,7 @@ namespace MissingTagProcessor
                 Console.ReadLine();
                 return;
             }
-            else if (args.Length < 2)
+            if (args.Length < 2)
             {
                 Console.WriteLine("Missing argument: Path to save processed errors file.");
                 Console.ReadLine();
@@ -80,7 +79,8 @@ namespace MissingTagProcessor
                         infoPart = infoPart.Substring(componentNameEnd, infoPart.Length - componentNameEnd);
                         infoPart = infoPart.Substring(0, infoPart.IndexOf('[') - 1);
 
-                        string tagType = infoPart.Substring(infoPart.IndexOf(' ') + 1, infoPart.LastIndexOf(' ') - (infoPart.IndexOf(' ') + 1));
+                        string tagType = infoPart.Substring(infoPart.IndexOf(' ') + 1,
+                            infoPart.LastIndexOf(' ') - (infoPart.IndexOf(' ') + 1));
 
                         switch (componentType)
                         {

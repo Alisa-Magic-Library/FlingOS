@@ -1,4 +1,5 @@
 ﻿#region LICENSE
+
 // ---------------------------------- LICENSE ---------------------------------- //
 //
 //    Fling OS - The educational operating system
@@ -22,32 +23,26 @@
 //		For paper mail address, please contact via email for details.
 //
 // ------------------------------------------------------------------------------ //
+
 #endregion
-    
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+
+using Drivers.Compiler.ASM;
 
 namespace Drivers.Compiler.Architectures.x86.ASMOps
 {
-    public class Add : ASM.ASMOp
+    public class Add : ASMOp
     {
-        public string Src;
         public string Dest;
+        public string Src;
         public bool WithCarry = false;
 
-        public override string Convert(ASM.ASMBlock theBlock)
+        public override string Convert(ASMBlock TheBlock)
         {
             if (WithCarry)
             {
                 return "adc " + Dest + ", " + Src;
             }
-            else
-            {
-                return "add " + Dest + ", " + Src;
-            }
+            return "add " + Dest + ", " + Src;
         }
     }
 }

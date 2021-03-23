@@ -1,4 +1,5 @@
 ﻿#region LICENSE
+
 // ---------------------------------- LICENSE ---------------------------------- //
 //
 //    Fling OS - The educational operating system
@@ -22,58 +23,60 @@
 //		For paper mail address, please contact via email for details.
 //
 // ------------------------------------------------------------------------------ //
+
 #endregion
-    
+
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Reflection;
+using Drivers.Compiler.Architectures.x86.ASMOps;
 using Drivers.Compiler.IL;
+using Drivers.Compiler.Types;
+using MethodInfo = System.Reflection.MethodInfo;
+using TypeInfo = Drivers.Compiler.Types.TypeInfo;
 
 namespace Drivers.Compiler.Architectures.x86
 {
     /// <summary>
-    /// See base class documentation.
+    ///     See base class documentation.
     /// </summary>
     public class MethodEnd : IL.ILOps.MethodEnd
     {
         public override void PerformStackOperations(ILPreprocessState conversionState, ILOp theOp)
         {
-            Type retType = (conversionState.Input.TheMethodInfo.IsConstructor ?
-                typeof(void) : ((MethodInfo)conversionState.Input.TheMethodInfo.UnderlyingInfo).ReturnType);
-            Types.TypeInfo retTypeInfo = conversionState.TheILLibrary.GetTypeInfo(retType);
+            Type retType = conversionState.Input.TheMethodInfo.IsConstructor
+                ? typeof(void)
+                : ((MethodInfo)conversionState.Input.TheMethodInfo.UnderlyingInfo).ReturnType;
+            TypeInfo retTypeInfo = conversionState.TheILLibrary.GetTypeInfo(retType);
             if (retTypeInfo.SizeOnStackInBytes != 0)
             {
-                conversionState.CurrentStackFrame.Stack.Pop();
+                conversionState.CurrentStackFrame.GetStack(theOp).Pop();
             }
         }
 
         /// <summary>
-        /// See base class documentation.
+        ///     See base class documentation.
         /// </summary>
         /// <param name="theOp">See base class documentation.</param>
         /// <param name="conversionState">See base class documentation.</param>
         /// <returns>See base class documentation.</returns>
         /// <exception cref="System.NotSupportedException">
-        /// Thrown when the return value is a float or the size on the stack
-        /// in bytes is not 4 or 8 bytes.
+        ///     Thrown when the return value is a float or the size on the stack
+        ///     in bytes is not 4 or 8 bytes.
         /// </exception>
         public override void Convert(ILConversionState conversionState, ILOp theOp)
         {
             //Store the return value
             //Get the return type
-            Type retType = (conversionState.Input.TheMethodInfo.IsConstructor ?
-                typeof(void) : ((MethodInfo)conversionState.Input.TheMethodInfo.UnderlyingInfo).ReturnType);
-            Types.TypeInfo retTypeInfo = conversionState.TheILLibrary.GetTypeInfo(retType);
+            Type retType = conversionState.Input.TheMethodInfo.IsConstructor
+                ? typeof(void)
+                : ((MethodInfo)conversionState.Input.TheMethodInfo.UnderlyingInfo).ReturnType;
+            TypeInfo retTypeInfo = conversionState.TheILLibrary.GetTypeInfo(retType);
             //Get the size of the return type on stack
             int retSize = retTypeInfo.SizeOnStackInBytes;
             //If the size isn't 0 (i.e. isn't "void" which has no return value)
             if (retSize != 0)
             {
                 //Pop the return value off our stack
-                StackItem retItem = conversionState.CurrentStackFrame.Stack.Pop();
+                StackItem retItem = conversionState.CurrentStackFrame.GetStack(theOp).Pop();
 
                 //If it is float, well, we don't support it yet...
                 if (retItem.isFloat)
@@ -84,13 +87,15 @@ namespace Drivers.Compiler.Architectures.x86
                 //Otherwise, store the return value at [ebp+8]
                 //[ebp+8] because that is last "argument"
                 //      - read the calling convention spec
-                else
+                for (int i = 0; i < retSize; i += 4)
                 {
-                    for(int i = 0; i < retSize; i += 4)
+                    conversionState.Append(new ASMOps.Pop {Size = OperandSize.Dword, Dest = "EAX"});
+                    conversionState.Append(new Mov
                     {
-                        conversionState.Append(new ASMOps.Pop() { Size = ASMOps.OperandSize.Dword, Dest = "EAX" });
-                        conversionState.Append(new ASMOps.Mov() { Size = ASMOps.OperandSize.Dword, Dest = "[EBP+" + (i + 8) + "]", Src = "EAX" });
-                    }
+                        Size = OperandSize.Dword,
+                        Dest = "[EBP+" + (i + 8) + "]",
+                        Src = "EAX"
+                    });
                 }
             }
 
@@ -101,16 +106,16 @@ namespace Drivers.Compiler.Architectures.x86
             {
                 //Get the total size of all locals
                 int totalBytes = 0;
-                foreach (Types.VariableInfo aLocal in conversionState.Input.TheMethodInfo.LocalInfos)
+                foreach (VariableInfo aLocal in conversionState.Input.TheMethodInfo.LocalInfos)
                 {
                     totalBytes += aLocal.TheTypeInfo.SizeOnStackInBytes;
                 }
                 //Move esp past the locals
-                conversionState.Append(new ASMOps.Add() { Src = totalBytes.ToString(), Dest = "ESP" });
+                conversionState.Append(new ASMOps.Add {Src = totalBytes.ToString(), Dest = "ESP"});
             }
 
             //Restore ebp to previous method's ebp
-            conversionState.Append(new ASMOps.Pop() { Size = ASMOps.OperandSize.Dword, Dest = "EBP" });
+            conversionState.Append(new ASMOps.Pop {Size = OperandSize.Dword, Dest = "EBP"});
             //This pop also takes last value off the stack which
             //means top item is the return address
             //So ret command can now be correctly executed.

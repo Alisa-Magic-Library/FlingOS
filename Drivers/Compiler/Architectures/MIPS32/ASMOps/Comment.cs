@@ -1,4 +1,5 @@
 ﻿#region LICENSE
+
 // ---------------------------------- LICENSE ---------------------------------- //
 //
 //    Fling OS - The educational operating system
@@ -22,18 +23,15 @@
 //		For paper mail address, please contact via email for details.
 //
 // ------------------------------------------------------------------------------ //
+
 #endregion
-    
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+
 using Drivers.Compiler.ASM;
+using Drivers.Compiler.ASM.ASMOps;
 
 namespace Drivers.Compiler.Architectures.MIPS32.ASMOps
 {
-    public class Comment : ASM.ASMOps.ASMComment
+    public class Comment : ASMComment
     {
         public Comment(string text)
             : base(text)
@@ -41,11 +39,11 @@ namespace Drivers.Compiler.Architectures.MIPS32.ASMOps
         }
 
         /// <summary>
-        /// Generates the complete line of assembling using the Text field.
+        ///     Generates the complete line of assembling using the Text field.
         /// </summary>
-        /// <param name="theBlock">The block for which the comment is to be generated.</param>
+        /// <param name="TheBlock">The block for which the comment is to be generated.</param>
         /// <returns>The complete line of assembly code.</returns>
-        public override string Convert(ASMBlock theBlock)
+        public override string Convert(ASMBlock TheBlock)
         {
             return "#" + Text;
         }
